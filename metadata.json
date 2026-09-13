@@ -1,0 +1,6 @@
+{
+  "name": "FlyEclipse Aviation Management System",
+  "description": "Private island airline management platform for Jersey, Alderney, Guernsey, and Bournemouth, featuring flight schedules, Cessna Caravan cabin seat booking with pet reservations, crew assignments, real-time maintenance logs, and ACL security.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
