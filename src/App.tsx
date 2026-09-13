@@ -30,6 +30,7 @@ import { GrailsCodeExplorer } from './components/GrailsCodeExplorer';
 import { EntityManagement } from './components/EntityManagement';
 import { ProfileWizardModal } from './components/ProfileWizardModal';
 import { MfaModal } from './components/MfaModal';
+import { LoginModal } from './components/LoginModal';
 import { BoardingPassModal } from './components/BoardingPassModal';
 import {
   Plane,
@@ -92,6 +93,7 @@ export default function App() {
 
   // Modals state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [activeTicketForModal, setActiveTicketForModal] = useState<{ booking: Booking; ticket: Ticket } | null>(null);
@@ -125,7 +127,7 @@ export default function App() {
     setAuditLogs((prev) => [newLog, ...prev]);
   };
 
-  // Signin / Signout with MFA
+  // Signin / Signout
   const handleSignOut = () => {
     setIsAuthenticated(false);
     handleLogEvent('SIGNOUT', `User ${currentUser.email} logged out of FlyEclipse system.`);
@@ -133,7 +135,18 @@ export default function App() {
   };
 
   const handleTriggerSignIn = () => {
-    setIsMfaModalOpen(true);
+    setIsLoginModalOpen(true);
+  };
+
+  const handleLoginSuccess = (user: UserProfile, method?: string) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setIsLoginModalOpen(false);
+    handleLogEvent(
+      'SIGNIN',
+      `User ${user.email} authenticated successfully via Spring Security (Role: ${user.role}, Tenant: FLYECLIPSE_CI, Method: ${method || 'PASSWORD'}).`
+    );
+    showNotification(`Welcome back, ${user.firstName}! Logged in as ${user.role.replace(/_/g, ' ')}.`, 'success');
   };
 
   const handleMfaSuccess = (method: MfaMethod) => {
@@ -504,6 +517,13 @@ export default function App() {
           handleLogEvent('ENTITY_CRUD', `User profile updated. Completed fields: 100%`);
           showNotification('Profile updated and saved to identity vault.', 'success');
         }}
+      />
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+        currentUser={currentUser}
       />
 
       <MfaModal
