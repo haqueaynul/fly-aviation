@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet & Booking Relational Entity Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f8fafc; padding: 24px; color: #1e293b; }
+    .studio-card { max-width: 1000px; margin: 0 auto; background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .tabs-bar { display: flex; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px; }
+    .tab-btn { padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 800; border: none; background: #f1f5f9; color: #475569; cursor: pointer; }
+    .tab-btn.active { background: #6d3cc7; color: #ffffff; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { font-size: 11px; text-transform: uppercase; color: #64748b; padding: 10px 14px; text-align: left; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .data-table td { padding: 12px 14px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="studio-card" id="entityManagementTemplate">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+      <div>
+        <h2 style="font-size: 22px; font-weight: 900;">Aviation Domain Entity Manager</h2>
+        <p style="font-size: 12px; color: #64748b;">Relational multi-tenant models (Tenant: FLYECLIPSE_CI)</p>
+      </div>
+      <button style="background: #6d3cc7; color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 12px; font-weight: 800; border: none; cursor: pointer;">
+        + Create Record
+      </button>
+    </div>
+
+    <div class="tabs-bar">
+      <button class="tab-btn active">Aircraft (3)</button>
+      <button class="tab-btn">Flight Schedules (6)</button>
+      <button class="tab-btn">Bookings (4)</button>
+      <button class="tab-btn">Passengers (12)</button>
+      <button class="tab-btn">Pets (3)</button>
+      <button class="tab-btn">Issued Tickets (8)</button>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tail Number</th>
+          <th>Model</th>
+          <th>Passenger Seats</th>
+          <th>Pet Bay Capacity</th>
+          <th>Hobbs Hours</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>2-ECLP</strong></td>
+          <td>Cessna 208B Grand Caravan EX</td>
+          <td>9 Seats (1-2 Config)</td>
+          <td>2 Climate-Controlled Bays</td>
+          <td>1,420.5 hrs</td>
+          <td><span style="color: #16a34a; font-weight: 700;">ACTIVE</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

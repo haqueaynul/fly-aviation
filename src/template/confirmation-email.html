@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlyEclipse Flight Confirmation Email</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: #f1f5f9; padding: 30px 10px; color: #1e293b; }
+    .email-container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .email-header { background: #6d3cc7; color: #ffffff; padding: 30px; text-align: center; }
+    .email-body { padding: 30px; }
+    .receipt-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; font-size: 11px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="email-container" id="confirmationEmailTemplate">
+    <div class="email-header">
+      <h1 style="font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">FlyEclipse Aviation</h1>
+      <p style="font-size: 13px; opacity: 0.9; margin-top: 6px;">Flight Reservation Confirmation • PNR: {{PNR}}</p>
+    </div>
+    <div class="email-body">
+      <h2 style="font-size: 18px; font-weight: 800; color: #0f172a;">Dear {{PASSENGER_NAME}},</h2>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin-top: 8px;">
+        Thank you for choosing FlyEclipse. Your executive seat aboard our Cessna 208B Grand Caravan EX is confirmed. Below are your travel itinerary details:
+      </p>
+
+      <div class="receipt-box">
+        <table style="width: 100%; font-size: 13px; line-height: 2;">
+          <tr>
+            <td style="color: #64748b;">Flight:</td>
+            <td><strong>{{FLIGHT_NUMBER}} ({{ORIGIN}} → {{DESTINATION}})</strong></td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Departure Date:</td>
+            <td><strong>{{FLIGHT_DATE}} at {{DEPARTURE_TIME}}</strong></td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Cabin Seat:</td>
+            <td><strong>{{SEAT_NUMBER}} (Executive Club)</strong></td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Pet Bay Allocation:</td>
+            <td><strong>{{PET_BAY_STATUS}}</strong></td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Total Paid:</td>
+            <td style="color: #6d3cc7; font-size: 16px;"><strong>{{TOTAL_AMOUNT}}</strong></td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+        Please arrive at the private apron gate at least 20 minutes prior to departure. Have your passport or Channel Islands photo ID ready.
+      </p>
+    </div>
+    <div class="footer">
+      FlyEclipse Aviation Ltd • Jersey Airport (JER), St Peter, Jersey JE1 1BY • AOC #CI-2026-992
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passenger Verification & Gate Check-In</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f8fafc; padding: 24px; color: #1e293b; }
+    .kiosk-card { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .badge { background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .input-row { display: flex; gap: 12px; margin-bottom: 24px; }
+    .input-field { flex: 1; padding: 14px; border: 1.5px solid #cbd5e1; border-radius: 14px; font-size: 15px; font-weight: 700; outline: none; }
+    .btn-verify { background: #6d3cc7; color: #ffffff; border: none; border-radius: 14px; padding: 0 24px; font-weight: 800; cursor: pointer; }
+    .manifest-card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; background: #faf5ff; }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .status-cleared { background: #dcfce7; color: #15803d; }
+    .status-pending { background: #fef3c7; color: #b45309; }
+  </style>
+</head>
+<body>
+  <div class="kiosk-card" id="passengerVerificationTemplate">
+    <div class="header">
+      <div>
+        <span class="badge">GATE APRON DISPATCH</span>
+        <h2 style="font-size: 22px; font-weight: 900; margin-top: 4px;">Passenger Gate Verification</h2>
+      </div>
+      <div style="font-size: 12px; color: #64748b; font-weight: 600;">AOC CI-2026-992</div>
+    </div>
+
+    <div class="input-row">
+      <input type="text" class="input-field" placeholder="Scan Boarding Pass Barcode or Enter 6-char PNR (e.g. EC-8891)..." id="pnrSearchInput" />
+      <button class="btn-verify" id="btnVerifyPassenger">Verify Passenger</button>
+    </div>
+
+    <div class="manifest-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="font-weight: 800; font-size: 16px;">Flight EC-101 (JER → GCI)</div>
+        <span class="status-badge status-cleared">Security & Defra Cleared</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 12px;">
+        <div>
+          <span style="color: #64748b; display: block; font-size: 10px;">PASSENGER</span>
+          <strong>Lord Peter de Carteret</strong>
+        </div>
+        <div>
+          <span style="color: #64748b; display: block; font-size: 10px;">PASSPORT NO.</span>
+          <strong>GBR-992019482</strong>
+        </div>
+        <div>
+          <span style="color: #64748b; display: block; font-size: 10px;">CABIN SEAT</span>
+          <strong style="color: #6d3cc7;">1A (Window)</strong>
+        </div>
+        <div>
+          <span style="color: #64748b; display: block; font-size: 10px;">PET CARRIER</span>
+          <strong>Crate Bay 1 (Dog)</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

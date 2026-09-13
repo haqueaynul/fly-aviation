@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Channel Islands Flight Timetable & Dispatch</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f8fafc; padding: 24px; color: #1e293b; }
+    .table-container { max-width: 1000px; margin: 0 auto; background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .badge { background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; padding: 12px 16px; border-bottom: 2px solid #e2e8f0; }
+    td { font-size: 13px; font-weight: 600; padding: 16px; border-bottom: 1px solid #f1f5f9; }
+    .flight-tag { font-family: monospace; font-weight: 800; color: #6d3cc7; background: #f5f3ff; padding: 4px 8px; border-radius: 6px; }
+    .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .status-on-time { background: #dcfce7; color: #166534; }
+    .status-boarding { background: #fef3c7; color: #92400e; }
+    .status-departed { background: #e0e7ff; color: #3730a3; }
+  </style>
+</head>
+<body>
+  <div class="table-container" id="flightSchedulesTemplate">
+    <div class="header-row">
+      <div>
+        <span class="badge">FLIGHT DISPATCH BOARD</span>
+        <h2 style="font-size: 22px; font-weight: 900; margin-top: 4px;">Channel Islands Scheduled Commuter Timetable</h2>
+      </div>
+      <div style="font-size: 12px; color: #64748b;">Aircraft: Cessna 208B Grand Caravan EX</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Flight</th>
+          <th>Aircraft Reg</th>
+          <th>Route</th>
+          <th>Departure</th>
+          <th>Arrival</th>
+          <th>Seats (Pax / Pets)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="flight-tag">EC-101</span></td>
+          <td>2-ECLP (Caravan EX)</td>
+          <td><strong>JER</strong> → <strong>GCI</strong></td>
+          <td>08:00</td>
+          <td>08:25</td>
+          <td>7/9 (1 Pet)</td>
+          <td><span class="status-pill status-boarding">Boarding Gate 2</span></td>
+        </tr>
+        <tr>
+          <td><span class="flight-tag">EC-102</span></td>
+          <td>2-ECLP (Caravan EX)</td>
+          <td><strong>GCI</strong> → <strong>JER</strong></td>
+          <td>09:00</td>
+          <td>09:25</td>
+          <td>9/9 (Full)</td>
+          <td><span class="status-pill status-on-time">Scheduled</span></td>
+        </tr>
+        <tr>
+          <td><span class="flight-tag">EC-201</span></td>
+          <td>2-ISLE (Caravan EX)</td>
+          <td><strong>JER</strong> → <strong>ACI</strong></td>
+          <td>10:30</td>
+          <td>11:05</td>
+          <td>5/9 (2 Pets)</td>
+          <td><span class="status-pill status-on-time">On Time</span></td>
+        </tr>
+        <tr>
+          <td><span class="flight-tag">EC-301</span></td>
+          <td>2-WAVE (Caravan EX)</td>
+          <td><strong>JER</strong> → <strong>BOH</strong></td>
+          <td>13:00</td>
+          <td>13:55</td>
+          <td>6/9 (0 Pets)</td>
+          <td><span class="status-pill status-on-time">On Time</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

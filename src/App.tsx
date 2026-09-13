@@ -31,6 +31,7 @@ import { ProfileWizardModal } from './components/ProfileWizardModal';
 import { MfaModal } from './components/MfaModal';
 import { LoginModal } from './components/LoginModal';
 import { BoardingPassModal } from './components/BoardingPassModal';
+import { TemplateExplorerModal } from './components/TemplateExplorerModal';
 import {
   Plane,
   Calendar,
@@ -48,6 +49,7 @@ import {
   User,
   Sparkles,
   ChevronDown,
+  FileCode,
 } from 'lucide-react';
 
 export default function App() {
@@ -93,6 +95,7 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState<boolean>(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [activeTicketForModal, setActiveTicketForModal] = useState<{ booking: Booking; ticket: Ticket } | null>(null);
 
@@ -306,6 +309,16 @@ export default function App() {
 
             {/* Right: Role Switcher & Auth Actions */}
             <div className="flex items-center gap-3">
+              {/* External HTML Templates Explorer */}
+              <button
+                onClick={() => setIsTemplateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-purple-50 hover:bg-purple-100 text-[#6d3cc7] border border-purple-200 text-xs font-bold transition-all shadow-sm"
+                title="View and download external HTML templates from /template"
+              >
+                <FileCode className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">HTML Templates</span>
+              </button>
+
               {/* ACL Role Switcher */}
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-2xl text-xs">
                 <Shield className="w-3.5 h-3.5 text-[#6d3cc7]" />
@@ -532,6 +545,11 @@ export default function App() {
           onClose={() => setActiveTicketForModal(null)}
         />
       )}
+
+      <TemplateExplorerModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+      />
     </div>
   );
 }

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlyEclipse Flight Booking Engine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f8fafc; padding: 24px; color: #0f172a; }
+    .booking-card { max-width: 900px; margin: 0 auto; background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .badge { background: #f5f3ff; color: #6d3cc7; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid #ddd6fe; }
+    .route-selector-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin-bottom: 20px; }
+    .select-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 14px; padding: 14px; }
+    .select-box label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
+    .select-box select { width: 100%; border: none; background: transparent; font-size: 16px; font-weight: 800; color: #1e293b; outline: none; }
+    .trip-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    .price-summary { background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+    .total-price { font-size: 28px; font-weight: 900; color: #6d3cc7; }
+    .btn-book { background: #6d3cc7; color: #ffffff; border: none; border-radius: 12px; padding: 14px 28px; font-size: 14px; font-weight: 800; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="booking-card" id="bookingEngineTemplate">
+    <div class="title-row">
+      <div>
+        <span class="badge">CHANNEL ISLANDS COMMUTER</span>
+        <h1 style="font-size: 24px; font-weight: 900; margin-top: 6px;">Reserve Cessna 208B Flight</h1>
+      </div>
+      <div style="text-align: right;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600;">Standard & Pet-Friendly Travel</span>
+      </div>
+    </div>
+
+    <!-- Route Selector -->
+    <div class="route-selector-grid">
+      <div class="select-box">
+        <label>Origin Island</label>
+        <select id="originAirport">
+          <option value="JER">Jersey (JER) - St Peter</option>
+          <option value="GCI">Guernsey (GCI) - Forest</option>
+          <option value="ACI">Alderney (ACI) - Channel</option>
+          <option value="BOH">Bournemouth (BOH) - UK Hub</option>
+        </select>
+      </div>
+      <div style="font-size: 20px; color: #6d3cc7; font-weight: 900;">⇆</div>
+      <div class="select-box">
+        <label>Destination Island</label>
+        <select id="destinationAirport">
+          <option value="GCI">Guernsey (GCI) - Forest</option>
+          <option value="JER">Jersey (JER) - St Peter</option>
+          <option value="ACI">Alderney (ACI) - Channel</option>
+          <option value="BOH">Bournemouth (BOH) - UK Hub</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div class="trip-options">
+      <div class="select-box">
+        <label>Travel Date</label>
+        <input type="date" style="width: 100%; border: none; background: transparent; font-weight: 800; font-size: 14px; outline: none;" value="2026-09-14" />
+      </div>
+      <div class="select-box">
+        <label>Passengers</label>
+        <select id="passengerCount">
+          <option value="1">1 Passenger</option>
+          <option value="2">2 Passengers</option>
+          <option value="3">3 Passengers</option>
+          <option value="9">Full Charter (9 Seats)</option>
+        </select>
+      </div>
+      <div class="select-box">
+        <label>Pet Travel Bay</label>
+        <select id="petTravelOption">
+          <option value="NONE">No Pets Traveling</option>
+          <option value="BAY_A">Aft Bay 1 - Dog (≤25kg)</option>
+          <option value="BAY_B">Aft Bay 2 - Cat / Small Pet</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Price Calculation Summary -->
+    <div class="price-summary">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: #6d3cc7; text-transform: uppercase;">Estimated Total</div>
+        <div class="total-price" id="displayTotalPrice">£145.00</div>
+        <div style="font-size: 10px; color: #64748b;">Includes Channel Islands airport landing charges & fuel surcharge</div>
+      </div>
+      <button class="btn-book" id="btnContinueToSeats">Continue to Seat Map →</button>
+    </div>
+  </div>
+</body>
+</html>
