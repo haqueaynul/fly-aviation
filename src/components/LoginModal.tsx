@@ -25,7 +25,7 @@ interface LoginModalProps {
   currentUser: UserProfile;
 }
 
-// Preset verified credentials for Spring Security + GORM Multi-Tenancy testing
+// Preset verified credentials for Node.js Multi-Tenancy testing
 export const KNOWN_ACCOUNTS: {
   email: string;
   password: string;
@@ -239,7 +239,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <Lock className="w-3.5 h-3.5" />
                 </span>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#6d3cc7]">
-                  Spring Security & GORM Multi-Tenancy
+                  Node.js Secure Multi-Tenancy
                 </span>
               </div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
@@ -390,7 +390,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Verifying Spring Security Credentials...</span>
+                    <span>Verifying Node.js Credentials...</span>
                   </>
                 ) : (
                   <>

@@ -370,17 +370,17 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
               <Database className="w-4 h-4" />
             </span>
             <span className="text-xs font-bold uppercase tracking-wider text-[#6d3cc7]">
-              GORM & Domain Entity Studio
+              Fleet & Booking Entity Studio
             </span>
             <span className="text-[10px] font-mono bg-purple-50 text-[#6d3cc7] border border-purple-200 px-2 py-0.5 rounded font-bold">
               Discriminator: FLYECLIPSE_CI
             </span>
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            GORM Domain Entity Manipulation
+            Aviation Domain Entity Manager
           </h2>
           <p className="text-xs text-slate-500">
-            Create, inspect, update, and cascade-delete GORM domain instances across your fleet, schedules, manifests, and tickets.
+            Create, inspect, update, and manage relational database records across your fleet, schedules, manifests, and tickets.
           </p>
         </div>
 
@@ -536,7 +536,7 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
           />
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-          <span>GORM Mode: MultiTenancySettings.Mode.DISCRIMINATOR</span>
+          <span>Multi-Tenancy Mode: Tenant Discriminator (FLYECLIPSE_CI)</span>
         </div>
       </div>
 
@@ -1195,7 +1195,7 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-black text-slate-900 text-lg">
-                {modalMode === 'ADD' ? 'Create Aircraft GORM Domain' : 'Edit Aircraft GORM Domain'}
+                {modalMode === 'ADD' ? 'Create Aircraft Record' : 'Edit Aircraft Record'}
               </h3>
               <button
                 onClick={() => setModalMode(null)}
@@ -1609,7 +1609,7 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-black text-slate-900 text-lg">Attach Pet GORM Domain</h3>
+              <h3 className="font-black text-slate-900 text-lg">Attach Pet to Booking</h3>
               <button
                 onClick={() => setModalMode(null)}
                 className="text-slate-400 hover:text-slate-700 text-lg font-bold"

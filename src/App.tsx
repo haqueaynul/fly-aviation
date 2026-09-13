@@ -26,7 +26,6 @@ import { FlightScheduleManager } from './components/FlightScheduleManager';
 import { MaintenanceDashboard } from './components/MaintenanceDashboard';
 import { CrewRosterDashboard } from './components/CrewRosterDashboard';
 import { AuditLogViewer } from './components/AuditLogViewer';
-import { GrailsCodeExplorer } from './components/GrailsCodeExplorer';
 import { EntityManagement } from './components/EntityManagement';
 import { ProfileWizardModal } from './components/ProfileWizardModal';
 import { MfaModal } from './components/MfaModal';
@@ -38,7 +37,6 @@ import {
   Wrench,
   Users,
   Shield,
-  FileCode2,
   Database,
   Ticket as TicketIcon,
   Bell,
@@ -55,7 +53,7 @@ import {
 export default function App() {
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<
-    'BOOKING' | 'PASSENGER' | 'ENTITIES' | 'SCHEDULES' | 'MAINTENANCE' | 'CREW' | 'AUDIT_LOGS' | 'GRAILS_CODE'
+    'BOOKING' | 'PASSENGER' | 'ENTITIES' | 'SCHEDULES' | 'MAINTENANCE' | 'CREW' | 'AUDIT_LOGS'
   >('ENTITIES');
 
   // Application State
@@ -144,7 +142,7 @@ export default function App() {
     setIsLoginModalOpen(false);
     handleLogEvent(
       'SIGNIN',
-      `User ${user.email} authenticated successfully via Spring Security (Role: ${user.role}, Tenant: FLYECLIPSE_CI, Method: ${method || 'PASSWORD'}).`
+      `User ${user.email} authenticated successfully via Node.js Secure Auth (Role: ${user.role}, Tenant: FLYECLIPSE_CI, Method: ${method || 'PASSWORD'}).`
     );
     showNotification(`Welcome back, ${user.firstName}! Logged in as ${user.role.replace(/_/g, ' ')}.`, 'success');
   };
@@ -278,9 +276,6 @@ export default function App() {
                     <span className="text-xl font-black tracking-tight text-slate-900">
                       Fly<span className="text-[#6d3cc7]">Eclipse</span>
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-50 text-[#6d3cc7] font-bold border border-purple-200">
-                      Cessna 208B Fleet
-                    </span>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
                     Jersey • Bournemouth • Alderney • Guernsey
@@ -389,14 +384,13 @@ export default function App() {
           {/* Navigation Tabs */}
           <div className="flex space-x-1 overflow-x-auto border-t border-slate-100 pt-1 text-xs font-bold">
             {[
-              { id: 'ENTITIES', label: 'GORM Entities & CRUD', icon: Database },
+              { id: 'ENTITIES', label: 'Fleet & Booking Entities', icon: Database },
               { id: 'BOOKING', label: 'Book Flight & Cabin', icon: Plane },
               { id: 'PASSENGER', label: 'Passenger Verification', icon: TicketIcon },
               { id: 'SCHEDULES', label: 'Flight Timetable', icon: Calendar },
               { id: 'MAINTENANCE', label: 'Cessna Fleet & Maintenance', icon: Wrench },
               { id: 'CREW', label: 'Flight Crew Roster', icon: Users },
               { id: 'AUDIT_LOGS', label: 'Multi-Tenant Audit Logs', icon: Shield },
-              { id: 'GRAILS_CODE', label: 'Groovy & Grails Source', icon: FileCode2 },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -485,8 +479,6 @@ export default function App() {
         )}
 
         {activeTab === 'AUDIT_LOGS' && <AuditLogViewer logs={auditLogs} />}
-
-        {activeTab === 'GRAILS_CODE' && <GrailsCodeExplorer />}
       </main>
 
       {/* Footer */}
@@ -502,7 +494,7 @@ export default function App() {
             </span>
           </div>
           <div className="text-[11px] text-slate-400">
-            Powered by Groovy & Grails Multi-Tenant GORM Architecture & Cessna 208B Grand Caravan EX
+            Powered by Modern Node.js Full-Stack Platform • Cessna 208B Grand Caravan EX
           </div>
         </div>
       </footer>
