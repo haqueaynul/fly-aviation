@@ -57,14 +57,25 @@ export interface Route {
   isCharterOnly?: boolean;
 }
 
+export interface FlightLegSegment {
+  legIndex: number;
+  flightNumber: string;
+  fromCode: string;
+  toCode: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+  aircraftRegistration: string;
+}
+
 export interface RegularFlight {
   id: string;
-  flightNumber: string; // e.g., 'FE-101'
+  flightNumber: string; // e.g., 'FE-101' or 'FE-101 / FE-102'
   departureTime: string; // '07:30'
   arrivalTime: string; // '08:00'
   fromCode: string;
   toCode: string;
-  viaCode?: string;
+  viaCode?: string; // 'ACI'
   aircraftRegistration: string;
   pilotId: string;
   copilotId?: string;
@@ -75,6 +86,14 @@ export interface RegularFlight {
   bookedSeats: string[]; // seatIds on 2h hold
   reservedSeats: string[]; // seatIds paid
   heldExpiresAt?: Record<string, number>; // seatId -> timestamp
+  // Connecting flight details
+  isConnecting?: boolean;
+  connectingVia?: string; // 'ACI'
+  connectingViaName?: string; // 'Alderney Airport'
+  layoverDuration?: string; // '30 mins'
+  totalTravelTime?: string; // '1h 45m'
+  sectorsCount?: number; // 2
+  legs?: FlightLegSegment[];
 }
 
 export interface SeatInfo {
@@ -168,6 +187,12 @@ export interface Booking {
   departureDate: string;
   departureTime: string;
   aircraftRegistration: string;
+  // Connecting flight fields for outbound
+  isConnecting?: boolean;
+  viaCode?: string;
+  connectingViaName?: string;
+  sectorsCount?: number;
+  outboundLegs?: FlightLegSegment[];
   // Return flight fields for return journeys
   isReturnTrip?: boolean;
   returnFlightId?: string;
@@ -176,6 +201,11 @@ export interface Booking {
   returnDepartureTime?: string;
   returnAircraftRegistration?: string;
   returnSeatIds?: string[];
+  returnIsConnecting?: boolean;
+  returnViaCode?: string;
+  returnConnectingViaName?: string;
+  returnSectorsCount?: number;
+  returnLegs?: FlightLegSegment[];
   userId: string;
   userEmail: string;
   passengers: PassengerInfo[];
@@ -216,6 +246,17 @@ export interface Ticket {
   petName?: string;
   checkedIn: boolean;
   legType?: 'OUTBOUND' | 'RETURN' | 'INBOUND';
+  // Connecting flight details
+  isConnecting?: boolean;
+  viaCode?: string; // 'ACI'
+  viaAirportName?: string; // 'Alderney Airport'
+  connectingLegIndex?: number; // 1 or 2
+  totalConnectingLegs?: number; // 2
+  finalDestination?: string; // 'BOH'
+  journeyOrigin?: string; // 'JER'
+  layoverDuration?: string; // '30 mins'
+  connectingFlightNumber?: string; // 'FE-102'
+  connectingDepartureTime?: string; // '08:30'
 }
 
 export interface PilotCrew {

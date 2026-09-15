@@ -100,6 +100,15 @@ export function getFlightsForRouteAndDate(
   targetDate: string,
   allSchedules: RegularFlight[]
 ): RegularFlight[] {
+  // SPECIAL RULE: Jersey (JER) <-> Bournemouth (BOH) has no direct service;
+  // it is operated strictly as a connecting service Via Alderney (ACI).
+  if (
+    (fromCode === 'JER' && toCode === 'BOH') ||
+    (fromCode === 'BOH' && toCode === 'JER')
+  ) {
+    return buildConnectingJerseyBournemouthFlights(fromCode, toCode, targetDate, allSchedules);
+  }
+
   // 1. Direct match on route AND date
   const directMatches = allSchedules.filter(
     (f) => f.fromCode === fromCode && f.toCode === toCode && f.date === targetDate
@@ -170,6 +179,212 @@ export function getFlightsForRouteAndDate(
       reservedSeats: ['1B', '3A', '4A'],
     },
   ];
+}
+
+/**
+ * Builds guaranteed connecting commuter flights between Jersey and Bournemouth via Alderney
+ */
+function buildConnectingJerseyBournemouthFlights(
+  fromCode: string,
+  toCode: string,
+  targetDate: string,
+  allSchedules: RegularFlight[]
+): RegularFlight[] {
+  const isOutbound = fromCode === 'JER' && toCode === 'BOH';
+
+  if (isOutbound) {
+    // JER -> ACI -> BOH
+    // Option 1: Morning Connection (FE-101 -> FE-102)
+    const morningLeg1 = {
+      legIndex: 1,
+      flightNumber: 'FE-101',
+      fromCode: 'JER',
+      toCode: 'ACI',
+      departureTime: '07:30',
+      arrivalTime: '08:00',
+      duration: '30 mins',
+      aircraftRegistration: 'G-ECLP',
+    };
+    const morningLeg2 = {
+      legIndex: 2,
+      flightNumber: 'FE-102',
+      fromCode: 'ACI',
+      toCode: 'BOH',
+      departureTime: '08:30',
+      arrivalTime: '09:15',
+      duration: '45 mins',
+      aircraftRegistration: 'G-ECLP',
+    };
+
+    // Option 2: Afternoon Connection (FE-205 -> FE-106)
+    const afternoonLeg1 = {
+      legIndex: 1,
+      flightNumber: 'FE-205',
+      fromCode: 'JER',
+      toCode: 'ACI',
+      departureTime: '13:30',
+      arrivalTime: '13:55',
+      duration: '25 mins',
+      aircraftRegistration: 'G-ECLS',
+    };
+    const afternoonLeg2 = {
+      legIndex: 2,
+      flightNumber: 'FE-106',
+      fromCode: 'ACI',
+      toCode: 'BOH',
+      departureTime: '14:30',
+      arrivalTime: '15:15',
+      duration: '45 mins',
+      aircraftRegistration: 'G-ECLS',
+    };
+
+    return [
+      {
+        id: `CONN-JER-BOH-MORN-${targetDate}`,
+        flightNumber: 'FE-101 / FE-102',
+        departureTime: '07:30',
+        arrivalTime: '09:15',
+        fromCode: 'JER',
+        toCode: 'BOH',
+        viaCode: 'ACI',
+        aircraftRegistration: 'G-ECLP',
+        pilotId: 'PLT-01',
+        status: 'ON_TIME',
+        statusRemark: 'Connecting at Alderney (30m transfer)',
+        date: targetDate,
+        availableSeatsCount: 6,
+        bookedSeats: [],
+        reservedSeats: ['2B'],
+        isConnecting: true,
+        connectingVia: 'ACI',
+        connectingViaName: 'Alderney (ACI)',
+        layoverDuration: '30 mins',
+        totalTravelTime: '1h 45m',
+        sectorsCount: 2,
+        legs: [morningLeg1, morningLeg2],
+      },
+      {
+        id: `CONN-JER-BOH-AFT-${targetDate}`,
+        flightNumber: 'FE-205 / FE-106',
+        departureTime: '13:30',
+        arrivalTime: '15:15',
+        fromCode: 'JER',
+        toCode: 'BOH',
+        viaCode: 'ACI',
+        aircraftRegistration: 'G-ECLS',
+        pilotId: 'PLT-02',
+        status: 'ON_TIME',
+        statusRemark: 'Connecting at Alderney (35m transfer)',
+        date: targetDate,
+        availableSeatsCount: 5,
+        bookedSeats: [],
+        reservedSeats: ['1B', '3A'],
+        isConnecting: true,
+        connectingVia: 'ACI',
+        connectingViaName: 'Alderney (ACI)',
+        layoverDuration: '35 mins',
+        totalTravelTime: '1h 45m',
+        sectorsCount: 2,
+        legs: [afternoonLeg1, afternoonLeg2],
+      },
+    ];
+  } else {
+    // BOH -> ACI -> JER
+    // Option 1: Morning Connection (FE-203 -> FE-204)
+    const morningLeg1 = {
+      legIndex: 1,
+      flightNumber: 'FE-203',
+      fromCode: 'BOH',
+      toCode: 'ACI',
+      departureTime: '10:00',
+      arrivalTime: '10:45',
+      duration: '45 mins',
+      aircraftRegistration: 'G-ECLS',
+    };
+    const morningLeg2 = {
+      legIndex: 2,
+      flightNumber: 'FE-204',
+      fromCode: 'ACI',
+      toCode: 'JER',
+      departureTime: '11:30',
+      arrivalTime: '11:55',
+      duration: '25 mins',
+      aircraftRegistration: 'G-ECLS',
+    };
+
+    // Option 2: Afternoon Connection (FE-207 -> FE-108)
+    const afternoonLeg1 = {
+      legIndex: 1,
+      flightNumber: 'FE-207',
+      fromCode: 'BOH',
+      toCode: 'ACI',
+      departureTime: '17:00',
+      arrivalTime: '17:45',
+      duration: '45 mins',
+      aircraftRegistration: 'G-ECLP',
+    };
+    const afternoonLeg2 = {
+      legIndex: 2,
+      flightNumber: 'FE-108',
+      fromCode: 'ACI',
+      toCode: 'JER',
+      departureTime: '18:15',
+      arrivalTime: '18:40',
+      duration: '25 mins',
+      aircraftRegistration: 'G-ECLP',
+    };
+
+    return [
+      {
+        id: `CONN-BOH-JER-MORN-${targetDate}`,
+        flightNumber: 'FE-203 / FE-204',
+        departureTime: '10:00',
+        arrivalTime: '11:55',
+        fromCode: 'BOH',
+        toCode: 'JER',
+        viaCode: 'ACI',
+        aircraftRegistration: 'G-ECLS',
+        pilotId: 'PLT-02',
+        status: 'ON_TIME',
+        statusRemark: 'Connecting at Alderney (45m transfer)',
+        date: targetDate,
+        availableSeatsCount: 7,
+        bookedSeats: [],
+        reservedSeats: ['1A'],
+        isConnecting: true,
+        connectingVia: 'ACI',
+        connectingViaName: 'Alderney (ACI)',
+        layoverDuration: '45 mins',
+        totalTravelTime: '1h 55m',
+        sectorsCount: 2,
+        legs: [morningLeg1, morningLeg2],
+      },
+      {
+        id: `CONN-BOH-JER-AFT-${targetDate}`,
+        flightNumber: 'FE-207 / FE-108',
+        departureTime: '17:00',
+        arrivalTime: '18:40',
+        fromCode: 'BOH',
+        toCode: 'JER',
+        viaCode: 'ACI',
+        aircraftRegistration: 'G-ECLP',
+        pilotId: 'PLT-01',
+        status: 'ON_TIME',
+        statusRemark: 'Connecting at Alderney (30m transfer)',
+        date: targetDate,
+        availableSeatsCount: 6,
+        bookedSeats: [],
+        reservedSeats: ['3B'],
+        isConnecting: true,
+        connectingVia: 'ACI',
+        connectingViaName: 'Alderney (ACI)',
+        layoverDuration: '30 mins',
+        totalTravelTime: '1h 40m',
+        sectorsCount: 2,
+        legs: [afternoonLeg1, afternoonLeg2],
+      },
+    ];
+  }
 }
 
 /**

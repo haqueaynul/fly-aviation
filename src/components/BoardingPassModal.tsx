@@ -130,11 +130,16 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
               {/* Airline Header */}
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#6d3cc7]">FlyEclipse Private Aviation</span>
                     {activeTicket.legType && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-[#6d3cc7]">
                         {activeTicket.legType} TRIP
+                      </span>
+                    )}
+                    {activeTicket.isConnecting && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                        CONNECTING LEG {activeTicket.connectingLegIndex || 1} OF {activeTicket.totalConnectingLegs || 2} (VIA {activeTicket.viaCode || 'ACI'})
                       </span>
                     )}
                   </div>
@@ -149,10 +154,34 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
                 </div>
               </div>
 
+              {/* Connecting Flight Journey Banner if applicable */}
+              {activeTicket.isConnecting && (
+                <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-amber-950">Multi-Sector Journey:</span>
+                      <span className="font-mono font-bold text-amber-900">
+                        {activeTicket.journeyOrigin} → {activeTicket.finalDestination} (Via Alderney ACI)
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-200/80 text-amber-950">
+                      Sector {activeTicket.connectingLegIndex} of {activeTicket.totalConnectingLegs}
+                    </span>
+                  </div>
+                  {activeTicket.layoverDuration && (
+                    <p className="text-[11px] text-amber-800 mt-1">
+                      Transfer: <strong>{activeTicket.layoverDuration}</strong> layover at Alderney Airport. Connecting flight <strong>{activeTicket.connectingFlightNumber}</strong> departs at <strong>{activeTicket.connectingDepartureTime} BST</strong>.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Route */}
               <div className="grid grid-cols-3 gap-2 items-center my-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <div>
-                  <span className="text-xs font-semibold text-slate-400 block">ORIGIN</span>
+                  <span className="text-xs font-semibold text-slate-400 block">
+                    {activeTicket.isConnecting ? 'SECTOR ORIGIN' : 'ORIGIN'}
+                  </span>
                   <span className="text-2xl font-black text-slate-800 font-mono">{activeTicket.origin}</span>
                   <span className="text-xs text-slate-500 block truncate">Departure Hub</span>
                 </div>
@@ -164,13 +193,19 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
                     <Plane className="w-5 h-5 text-[#6d3cc7] mx-1 shrink-0" />
                     <div className="h-0.5 w-full bg-purple-200"></div>
                   </div>
-                  <span className="text-[10px] text-slate-400">Direct Island Hop</span>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {activeTicket.isConnecting ? `Via ${activeTicket.viaCode || 'Alderney'}` : 'Direct Island Hop'}
+                  </span>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs font-semibold text-slate-400 block">DESTINATION</span>
+                  <span className="text-xs font-semibold text-slate-400 block">
+                    {activeTicket.isConnecting ? 'SECTOR DESTINATION' : 'DESTINATION'}
+                  </span>
                   <span className="text-2xl font-black text-slate-800 font-mono">{activeTicket.destination}</span>
-                  <span className="text-xs text-slate-500 block truncate">Arrival Terminal</span>
+                  <span className="text-xs text-slate-500 block truncate">
+                    {activeTicket.isConnecting && activeTicket.connectingLegIndex === 1 ? 'Connection Hub' : 'Arrival Terminal'}
+                  </span>
                 </div>
               </div>
 
@@ -252,6 +287,11 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
                 <div className="my-2 p-1.5 rounded bg-purple-100 text-[#6d3cc7] font-mono text-xs font-bold">
                   SEAT {activeTicket.seatNumber}
                 </div>
+                {activeTicket.isConnecting && (
+                  <div className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200">
+                    LEG {activeTicket.connectingLegIndex || 1}/2 • VIA {activeTicket.viaCode || 'ACI'}
+                  </div>
+                )}
               </div>
 
               {/* SVG 2D QR Code Representation */}

@@ -49,39 +49,53 @@ export function downloadBoardingPassPDF(ticket: Ticket, booking?: Booking | null
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(8, 22, 140, 78, 3, 3, 'FD');
 
+  // If connecting flight, show connecting flight indicator banner
+  if (ticket.isConnecting) {
+    doc.setFillColor(254, 243, 199); // Amber 100
+    doc.roundedRect(12, 23.5, 102, 5, 1, 1, 'F');
+    doc.setTextColor(146, 64, 14); // Amber 800
+    doc.setFontSize(5.8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      `CONNECTING FLIGHT: LEG ${ticket.connectingLegIndex || 1} OF ${ticket.totalConnectingLegs || 2} (VIA ALDERNEY - ACI) • DEST: ${ticket.finalDestination || ticket.destination}`,
+      14,
+      27
+    );
+  }
+
   // Origin -> Destination Display with Proper Fly Icon
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(ticket.origin, 14, 33);
+  doc.text(ticket.origin, 14, 34);
 
   // Draw proper fly icon between origin and destination
-  drawRouteFlightIcon(doc, 28, 48, 30.2, primaryColor);
+  drawRouteFlightIcon(doc, 28, 48, 31.2, primaryColor);
 
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(ticket.destination, 50, 33);
+  doc.text(ticket.destination, 50, 34);
 
   // Flight number & Aircraft
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text(`FLIGHT: ${ticket.flightNumber}`, 78, 29);
+  doc.text(`FLIGHT: ${ticket.flightNumber}`, 78, 30);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text(`Aircraft: ${ticket.aircraftModel || 'Cessna 208B Caravan'}`, 78, 34);
+  doc.setFontSize(6.8);
+  doc.text(`Aircraft: ${ticket.aircraftModel || 'Cessna 208B Caravan'}`, 78, 34.5);
 
   // PNR Badge
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.roundedRect(120, 25, 24, 9, 1.5, 1.5, 'F');
+  doc.roundedRect(120, 24, 24, 9, 1.5, 1.5, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(6);
   doc.setFont('helvetica', 'normal');
-  doc.text('BOOKING PNR', 123, 28.5);
+  doc.text('BOOKING PNR', 123, 27.5);
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(ticket.pnr, 123, 32.5);
+  doc.text(ticket.pnr, 123, 31.5);
 
   // Divider line
   doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
@@ -193,10 +207,21 @@ export function downloadBoardingPassPDF(ticket: Ticket, booking?: Booking | null
 
   doc.setTextColor(148, 163, 184);
   doc.setFontSize(6);
-  doc.text('ROUTE / DATE', 160, 54);
+  doc.text(ticket.isConnecting ? `ROUTE (VIA ${ticket.viaCode || 'ACI'})` : 'ROUTE / DATE', 160, 53.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.setFontSize(7);
-  doc.text(`${ticket.origin} - ${ticket.destination}  •  ${ticket.departureDate}`, 160, 58);
+  doc.setFontSize(6.8);
+  doc.text(
+    ticket.isConnecting
+      ? `${ticket.origin}-${ticket.destination} (LEG ${ticket.connectingLegIndex}/2)`
+      : `${ticket.origin} - ${ticket.destination}  •  ${ticket.departureDate}`,
+    160,
+    57.5
+  );
+  if (ticket.isConnecting) {
+    doc.setFontSize(6);
+    doc.setTextColor(146, 64, 14); // Amber 800
+    doc.text(`DEST: ${ticket.finalDestination} • ${ticket.departureDate}`, 160, 60.8);
+  }
 
   // QR Code representation (corner markers + data points)
   const qrX = 163;

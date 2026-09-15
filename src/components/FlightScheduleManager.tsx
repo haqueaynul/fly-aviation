@@ -81,6 +81,58 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
         </div>
       </div>
 
+      {/* Channel Islands Connecting Route Hub Notice */}
+      <div className="bg-purple-50/70 border border-purple-200 rounded-3xl p-5 text-xs text-slate-700">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-3 border-b border-purple-200/60">
+          <div className="flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-[#6d3cc7] text-white">
+              <Plane className="w-4 h-4" />
+            </span>
+            <div>
+              <h4 className="font-black text-slate-900 text-sm">
+                Jersey (JER) ⇄ Bournemouth (BOH) Connecting Route via Alderney (ACI)
+              </h4>
+              <p className="text-slate-500 text-[11px]">
+                Direct sector timetable below. Travel between Jersey and Bournemouth connects via the Alderney transfer hub.
+              </p>
+            </div>
+          </div>
+          <span className="font-mono text-[11px] font-bold px-3 py-1 rounded-full bg-purple-100 text-[#6d3cc7] border border-purple-300">
+            2 Sectors • 30m Layover at ACI
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          <div className="bg-white p-3 rounded-2xl border border-purple-100 shadow-2xs">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-purple-700 mb-1 flex items-center justify-between">
+              <span>Outbound Connection (JER → BOH)</span>
+              <span className="font-mono text-slate-500">Total: 1h 45m</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-800">
+              <span className="bg-slate-100 px-2 py-0.5 rounded text-[#6d3cc7]">FE-101</span>
+              <span>JER 07:30 → ACI 08:00</span>
+              <span className="text-purple-400">→</span>
+              <span className="bg-slate-100 px-2 py-0.5 rounded text-[#6d3cc7]">FE-102</span>
+              <span>ACI 08:30 → BOH 09:15</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-3 rounded-2xl border border-purple-100 shadow-2xs">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-purple-700 mb-1 flex items-center justify-between">
+              <span>Inbound Connection (BOH → JER)</span>
+              <span className="font-mono text-slate-500">Total: 1h 55m</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-800">
+              <span className="bg-slate-100 px-2 py-0.5 rounded text-[#6d3cc7]">FE-203</span>
+              <span>BOH 10:00 → ACI 10:45</span>
+              <span className="text-purple-400">→</span>
+              <span className="bg-slate-100 px-2 py-0.5 rounded text-[#6d3cc7]">FE-204</span>
+              <span>ACI 11:30 → JER 11:55</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Schedule Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">

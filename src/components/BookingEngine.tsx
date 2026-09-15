@@ -106,11 +106,15 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
     },
   ]);
 
+  const outboundSectors = selectedFlight?.isConnecting ? 2 : 1;
+  const returnSectors = selectedReturnFlight?.isConnecting ? 2 : 1;
+
   // Pricing breakdown: outbound + optional return + pet supplements
-  const outboundFare = calculateFare(selectedSeatIds.length, 0);
-  const returnFare = tripType === 'RETURN' ? calculateFare(selectedReturnSeatIds.length, 0) : null;
-  const petFeePerLeg = 75;
-  const petTotal = hasPetsTravelling ? pets.length * petFeePerLeg * (tripType === 'RETURN' ? 2 : 1) : 0;
+  const outboundFare = calculateFare(selectedSeatIds.length, 0, outboundSectors);
+  const returnFare = tripType === 'RETURN' ? calculateFare(selectedReturnSeatIds.length, 0, returnSectors) : null;
+  const petFeePerSector = 75;
+  const totalSectorsCount = outboundSectors + (tripType === 'RETURN' ? returnSectors : 0);
+  const petTotal = hasPetsTravelling ? pets.length * petFeePerSector * totalSectorsCount : 0;
   const baseTotal = outboundFare.baseTotal + (returnFare ? returnFare.baseTotal : 0);
   const grandTotal = baseTotal + petTotal;
 
@@ -256,6 +260,12 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
       departureDate: flightDate,
       departureTime: selectedFlight.departureTime,
       aircraftRegistration: selectedFlight.aircraftRegistration,
+      // Connecting flight support
+      isConnecting: selectedFlight.isConnecting,
+      viaCode: selectedFlight.viaCode,
+      connectingViaName: selectedFlight.connectingViaName,
+      sectorsCount: outboundSectors,
+      outboundLegs: selectedFlight.legs,
       isReturnTrip: tripType === 'RETURN',
       returnFlightId: selectedReturnFlight ? selectedReturnFlight.id : undefined,
       returnFlightNumber: selectedReturnFlight ? selectedReturnFlight.flightNumber : undefined,
@@ -263,6 +273,11 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
       returnDepartureTime: selectedReturnFlight ? selectedReturnFlight.departureTime : undefined,
       returnAircraftRegistration: selectedReturnFlight ? selectedReturnFlight.aircraftRegistration : undefined,
       returnSeatIds: tripType === 'RETURN' ? selectedReturnSeatIds : undefined,
+      returnIsConnecting: selectedReturnFlight?.isConnecting,
+      returnViaCode: selectedReturnFlight?.viaCode,
+      returnConnectingViaName: selectedReturnFlight?.connectingViaName,
+      returnSectorsCount: returnSectors,
+      returnLegs: selectedReturnFlight?.legs,
       userId: currentUser.id,
       userEmail: currentUser.email,
       passengers,
@@ -283,6 +298,8 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
     onLogEvent(
       'SEAT_HELD_2H',
       `Seats [${selectedSeatIds.join(', ')}] held for 2 hours on flight ${selectedFlight.flightNumber}${
+        selectedFlight.isConnecting ? ' (Connecting Via Alderney ACI)' : ''
+      }${
         selectedReturnFlight ? ` and inbound flight ${selectedReturnFlight.flightNumber}` : ''
       } under PNR ${pnrCode}`,
       booking.id
@@ -304,70 +321,229 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
         stripePaymentIntentId: 'pi_3M' + Math.random().toString(36).substring(2, 12),
       };
 
-      // Outbound ticket
-      const outboundTicket: Ticket = {
-        ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
-        bookingReference: confirmedBooking.referenceNumber,
-        pnr: confirmedBooking.pnr,
-        passengerId: confirmedBooking.passengers[0].id,
-        passengerName: confirmedBooking.leadPassengerName,
-        passengerType: confirmedBooking.passengers[0].type,
-        flightNumber: confirmedBooking.flightNumber,
-        origin: confirmedBooking.fromCode,
-        destination: confirmedBooking.toCode,
-        departureDate: confirmedBooking.departureDate,
-        departureTime: confirmedBooking.departureTime,
-        gate: 'GATE 1',
-        seatNumber: confirmedBooking.seatIds[0] || '1A',
-        qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${confirmedBooking.passengers[0].passportNumber}:${confirmedBooking.seatIds[0]}`,
-        barcodeNumber: '298104829104',
-        aircraftModel: 'Cessna 208B Grand Caravan EX',
-        baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-        hasPetAttached: hasPetsTravelling && pets.length > 0,
-        petName: pets[0]?.name,
-        checkedIn: false,
-        legType: 'OUTBOUND',
-      };
+      const generatedTickets: Ticket[] = [];
 
-      const generatedTickets: Ticket[] = [outboundTicket];
+      // Generate Outbound Tickets (Multi-leg if connecting)
+      if (selectedFlight.isConnecting && selectedFlight.legs && selectedFlight.legs.length >= 2) {
+        // Sector 1 Ticket (e.g., JER -> ACI)
+        const leg1 = selectedFlight.legs[0];
+        const leg2 = selectedFlight.legs[1];
 
-      // Return ticket if round trip
-      if (confirmedBooking.isReturnTrip && confirmedBooking.returnFlightNumber) {
-        const returnTicket: Ticket = {
+        const outboundLeg1Ticket: Ticket = {
           ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
           bookingReference: confirmedBooking.referenceNumber,
           pnr: confirmedBooking.pnr,
           passengerId: confirmedBooking.passengers[0].id,
           passengerName: confirmedBooking.leadPassengerName,
           passengerType: confirmedBooking.passengers[0].type,
-          flightNumber: confirmedBooking.returnFlightNumber,
-          origin: confirmedBooking.toCode, // Origin is return origin
-          destination: confirmedBooking.fromCode,
-          departureDate: confirmedBooking.returnDepartureDate || returnDate,
-          departureTime: confirmedBooking.returnDepartureTime || '14:30',
-          gate: 'GATE 2',
-          seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
-          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${confirmedBooking.passengers[0].passportNumber}:${(confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || '1A'}`,
-          barcodeNumber: '381904829105',
+          flightNumber: leg1.flightNumber,
+          origin: leg1.fromCode,
+          destination: leg1.toCode,
+          departureDate: confirmedBooking.departureDate,
+          departureTime: leg1.departureTime,
+          gate: 'GATE 1',
+          seatNumber: confirmedBooking.seatIds[0] || '1A',
+          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${leg1.flightNumber}:${leg1.fromCode}-${leg1.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
+          barcodeNumber: '298104829104',
           aircraftModel: 'Cessna 208B Grand Caravan EX',
           baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
           hasPetAttached: hasPetsTravelling && pets.length > 0,
           petName: pets[0]?.name,
           checkedIn: false,
-          legType: 'INBOUND',
+          legType: 'OUTBOUND',
+          isConnecting: true,
+          viaCode: 'ACI',
+          viaAirportName: 'Alderney Airport',
+          connectingLegIndex: 1,
+          totalConnectingLegs: 2,
+          finalDestination: confirmedBooking.toCode,
+          journeyOrigin: confirmedBooking.fromCode,
+          layoverDuration: selectedFlight.layoverDuration || '30 mins',
+          connectingFlightNumber: leg2.flightNumber,
+          connectingDepartureTime: leg2.departureTime,
         };
-        generatedTickets.push(returnTicket);
+
+        // Sector 2 Ticket (e.g., ACI -> BOH)
+        const outboundLeg2Ticket: Ticket = {
+          ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+          bookingReference: confirmedBooking.referenceNumber,
+          pnr: confirmedBooking.pnr,
+          passengerId: confirmedBooking.passengers[0].id,
+          passengerName: confirmedBooking.leadPassengerName,
+          passengerType: confirmedBooking.passengers[0].type,
+          flightNumber: leg2.flightNumber,
+          origin: leg2.fromCode,
+          destination: leg2.toCode,
+          departureDate: confirmedBooking.departureDate,
+          departureTime: leg2.departureTime,
+          gate: 'GATE 2',
+          seatNumber: confirmedBooking.seatIds[0] || '1A',
+          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${leg2.flightNumber}:${leg2.fromCode}-${leg2.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
+          barcodeNumber: '298104829105',
+          aircraftModel: 'Cessna 208B Grand Caravan EX',
+          baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+          hasPetAttached: hasPetsTravelling && pets.length > 0,
+          petName: pets[0]?.name,
+          checkedIn: false,
+          legType: 'OUTBOUND',
+          isConnecting: true,
+          viaCode: 'ACI',
+          viaAirportName: 'Alderney Airport',
+          connectingLegIndex: 2,
+          totalConnectingLegs: 2,
+          finalDestination: confirmedBooking.toCode,
+          journeyOrigin: confirmedBooking.fromCode,
+          layoverDuration: selectedFlight.layoverDuration || '30 mins',
+          connectingFlightNumber: leg1.flightNumber,
+          connectingDepartureTime: leg1.departureTime,
+        };
+
+        generatedTickets.push(outboundLeg1Ticket, outboundLeg2Ticket);
+      } else {
+        // Direct Non-Stop Outbound
+        const outboundTicket: Ticket = {
+          ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+          bookingReference: confirmedBooking.referenceNumber,
+          pnr: confirmedBooking.pnr,
+          passengerId: confirmedBooking.passengers[0].id,
+          passengerName: confirmedBooking.leadPassengerName,
+          passengerType: confirmedBooking.passengers[0].type,
+          flightNumber: confirmedBooking.flightNumber,
+          origin: confirmedBooking.fromCode,
+          destination: confirmedBooking.toCode,
+          departureDate: confirmedBooking.departureDate,
+          departureTime: confirmedBooking.departureTime,
+          gate: 'GATE 1',
+          seatNumber: confirmedBooking.seatIds[0] || '1A',
+          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${confirmedBooking.passengers[0].passportNumber}:${confirmedBooking.seatIds[0]}`,
+          barcodeNumber: '298104829104',
+          aircraftModel: 'Cessna 208B Grand Caravan EX',
+          baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+          hasPetAttached: hasPetsTravelling && pets.length > 0,
+          petName: pets[0]?.name,
+          checkedIn: false,
+          legType: 'OUTBOUND',
+        };
+        generatedTickets.push(outboundTicket);
+      }
+
+      // Return tickets if round trip
+      if (confirmedBooking.isReturnTrip && selectedReturnFlight) {
+        if (selectedReturnFlight.isConnecting && selectedReturnFlight.legs && selectedReturnFlight.legs.length >= 2) {
+          const retLeg1 = selectedReturnFlight.legs[0];
+          const retLeg2 = selectedReturnFlight.legs[1];
+
+          // Return Leg 1 (e.g., BOH -> ACI)
+          const retLeg1Ticket: Ticket = {
+            ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+            bookingReference: confirmedBooking.referenceNumber,
+            pnr: confirmedBooking.pnr,
+            passengerId: confirmedBooking.passengers[0].id,
+            passengerName: confirmedBooking.leadPassengerName,
+            passengerType: confirmedBooking.passengers[0].type,
+            flightNumber: retLeg1.flightNumber,
+            origin: retLeg1.fromCode,
+            destination: retLeg1.toCode,
+            departureDate: confirmedBooking.returnDepartureDate || returnDate,
+            departureTime: retLeg1.departureTime,
+            gate: 'GATE 1',
+            seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
+            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${retLeg1.flightNumber}:${retLeg1.fromCode}-${retLeg1.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
+            barcodeNumber: '381904829105',
+            aircraftModel: 'Cessna 208B Grand Caravan EX',
+            baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+            hasPetAttached: hasPetsTravelling && pets.length > 0,
+            petName: pets[0]?.name,
+            checkedIn: false,
+            legType: 'INBOUND',
+            isConnecting: true,
+            viaCode: 'ACI',
+            viaAirportName: 'Alderney Airport',
+            connectingLegIndex: 1,
+            totalConnectingLegs: 2,
+            finalDestination: confirmedBooking.fromCode,
+            journeyOrigin: confirmedBooking.toCode,
+            layoverDuration: selectedReturnFlight.layoverDuration || '45 mins',
+            connectingFlightNumber: retLeg2.flightNumber,
+            connectingDepartureTime: retLeg2.departureTime,
+          };
+
+          // Return Leg 2 (e.g., ACI -> JER)
+          const retLeg2Ticket: Ticket = {
+            ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+            bookingReference: confirmedBooking.referenceNumber,
+            pnr: confirmedBooking.pnr,
+            passengerId: confirmedBooking.passengers[0].id,
+            passengerName: confirmedBooking.leadPassengerName,
+            passengerType: confirmedBooking.passengers[0].type,
+            flightNumber: retLeg2.flightNumber,
+            origin: retLeg2.fromCode,
+            destination: retLeg2.toCode,
+            departureDate: confirmedBooking.returnDepartureDate || returnDate,
+            departureTime: retLeg2.departureTime,
+            gate: 'GATE 2',
+            seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
+            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${retLeg2.flightNumber}:${retLeg2.fromCode}-${retLeg2.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
+            barcodeNumber: '381904829106',
+            aircraftModel: 'Cessna 208B Grand Caravan EX',
+            baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+            hasPetAttached: hasPetsTravelling && pets.length > 0,
+            petName: pets[0]?.name,
+            checkedIn: false,
+            legType: 'INBOUND',
+            isConnecting: true,
+            viaCode: 'ACI',
+            viaAirportName: 'Alderney Airport',
+            connectingLegIndex: 2,
+            totalConnectingLegs: 2,
+            finalDestination: confirmedBooking.fromCode,
+            journeyOrigin: confirmedBooking.toCode,
+            layoverDuration: selectedReturnFlight.layoverDuration || '45 mins',
+            connectingFlightNumber: retLeg1.flightNumber,
+            connectingDepartureTime: retLeg1.departureTime,
+          };
+
+          generatedTickets.push(retLeg1Ticket, retLeg2Ticket);
+        } else {
+          // Direct Return Ticket
+          const returnTicket: Ticket = {
+            ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+            bookingReference: confirmedBooking.referenceNumber,
+            pnr: confirmedBooking.pnr,
+            passengerId: confirmedBooking.passengers[0].id,
+            passengerName: confirmedBooking.leadPassengerName,
+            passengerType: confirmedBooking.passengers[0].type,
+            flightNumber: confirmedBooking.returnFlightNumber || selectedReturnFlight.flightNumber,
+            origin: confirmedBooking.toCode, // Origin is return origin
+            destination: confirmedBooking.fromCode,
+            departureDate: confirmedBooking.returnDepartureDate || returnDate,
+            departureTime: confirmedBooking.returnDepartureTime || selectedReturnFlight.departureTime,
+            gate: 'GATE 2',
+            seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
+            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${confirmedBooking.passengers[0].passportNumber}:${(confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || '1A'}`,
+            barcodeNumber: '381904829105',
+            aircraftModel: 'Cessna 208B Grand Caravan EX',
+            baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+            hasPetAttached: hasPetsTravelling && pets.length > 0,
+            petName: pets[0]?.name,
+            checkedIn: false,
+            legType: 'INBOUND',
+          };
+          generatedTickets.push(returnTicket);
+        }
       }
 
       setActiveBooking(confirmedBooking);
       setIssuedTickets(generatedTickets);
-      setSelectedTicketForModal(outboundTicket);
+      setSelectedTicketForModal(generatedTickets[0]);
       onBookingConfirmed(confirmedBooking, generatedTickets);
       setStep(5);
 
       onLogEvent(
         'PAYMENT_COMPLETED',
-        `Stripe verified £${grandTotal} for PNR ${confirmedBooking.pnr}. ${generatedTickets.length} OpenPDF Boarding Passes issued.`,
+        `Stripe verified £${grandTotal} for PNR ${confirmedBooking.pnr}. ${generatedTickets.length} Boarding Passes issued (${
+          selectedFlight.isConnecting ? 'Multi-leg connecting via Alderney' : 'Direct'
+        }).`,
         confirmedBooking.id
       );
     }, 1500);
@@ -571,7 +747,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                   className="w-4 h-4 rounded text-[#6d3cc7] focus:ring-[#6d3cc7]"
                 />
                 <span className="text-xs font-bold text-emerald-900">
-                  Include Pet Booking (+£{petFeePerLeg * (tripType === 'RETURN' ? 2 : 1)} {tripType === 'RETURN' ? 'Round-trip' : 'One-way'})
+                  Include Pet Booking (+£{petFeePerSector * (tripType === 'RETURN' ? 2 : 1)} {tripType === 'RETURN' ? 'Round-trip' : 'One-way'})
                 </span>
               </label>
             </div>
@@ -701,8 +877,8 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
 
       {/* STEP 2: Interactive Cessna Caravan Seat Map & Pet Allocation */}
       {step === 2 && selectedFlight && (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-xl space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#6d3cc7]">
                 {tripType === 'RETURN' ? 'Round-Trip Cabin Allocation' : 'One-Way Cabin Allocation'}
@@ -1165,25 +1341,58 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 {/* Outbound leg details */}
                 <div className="border-b border-slate-200 pb-2">
                   <div className="flex items-center justify-between font-bold text-slate-800">
-                    <span className="text-[#6d3cc7]">OUTBOUND LEG</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#6d3cc7]">OUTBOUND LEG</span>
+                      {selectedFlight.isConnecting && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                          1 Stop via Alderney (ACI)
+                        </span>
+                      )}
+                    </div>
                     <span className="font-mono">{selectedFlight.flightNumber}</span>
                   </div>
                   <div className="flex justify-between text-slate-600 mt-1">
                     <span>Route:</span>
-                    <span className="font-medium">{selectedFlight.fromCode} → {selectedFlight.toCode}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Departure & Arrival:</span>
                     <span className="font-medium">
-                      {flightDate} • {selectedFlight.departureTime} BST → {selectedFlight.arrivalTime} BST
+                      {selectedFlight.fromCode} → {selectedFlight.toCode}
+                      {selectedFlight.isConnecting && ' (Connecting via Alderney Airport)'}
                     </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Total Flight Time:</span>
-                    <span className="font-bold text-[#6d3cc7] font-mono">
-                      {calculateFlightDuration(selectedFlight.departureTime, selectedFlight.arrivalTime)} (Non-stop)
-                    </span>
-                  </div>
+                  {selectedFlight.isConnecting && selectedFlight.legs && selectedFlight.legs.length >= 2 ? (
+                    <div className="my-2 p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 space-y-1.5 font-mono text-[11px]">
+                      <div className="flex justify-between text-purple-950 font-bold">
+                        <span>Sector 1 ({selectedFlight.legs[0].flightNumber}):</span>
+                        <span>{selectedFlight.legs[0].fromCode} {selectedFlight.legs[0].departureTime} → {selectedFlight.legs[0].toCode} {selectedFlight.legs[0].arrivalTime}</span>
+                      </div>
+                      <div className="flex justify-between text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        <span>Layover / Connection:</span>
+                        <span>{selectedFlight.layoverDuration || '30 mins'} at Alderney (ACI)</span>
+                      </div>
+                      <div className="flex justify-between text-purple-950 font-bold">
+                        <span>Sector 2 ({selectedFlight.legs[1].flightNumber}):</span>
+                        <span>{selectedFlight.legs[1].fromCode} {selectedFlight.legs[1].departureTime} → {selectedFlight.legs[1].toCode} {selectedFlight.legs[1].arrivalTime}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600 pt-1 border-t border-purple-200/50">
+                        <span>Outbound Sector Fare:</span>
+                        <span className="font-bold text-[#6d3cc7]">2 sectors × £{outboundFare.perSectorBaseTotal} = £{outboundFare.baseTotal}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Departure & Arrival:</span>
+                        <span className="font-medium">
+                          {flightDate} • {selectedFlight.departureTime} BST → {selectedFlight.arrivalTime} BST
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Total Flight Time:</span>
+                        <span className="font-bold text-[#6d3cc7] font-mono">
+                          {calculateFlightDuration(selectedFlight.departureTime, selectedFlight.arrivalTime)} (Non-stop)
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between text-slate-600">
                     <span>Aircraft & Seats:</span>
                     <span className="font-medium font-mono">{selectedFlight.aircraftRegistration} • Seats {selectedSeatIds.join(', ')}</span>
@@ -1194,25 +1403,58 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 {tripType === 'RETURN' && selectedReturnFlight && (
                   <div className="border-b border-slate-200 pb-2">
                     <div className="flex items-center justify-between font-bold text-slate-800">
-                      <span className="text-amber-700">INBOUND LEG</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-700">INBOUND LEG</span>
+                        {selectedReturnFlight.isConnecting && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                            1 Stop via Alderney (ACI)
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono">{selectedReturnFlight.flightNumber}</span>
                     </div>
                     <div className="flex justify-between text-slate-600 mt-1">
                       <span>Route:</span>
-                      <span className="font-medium">{selectedReturnFlight.fromCode} → {selectedReturnFlight.toCode}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Departure & Arrival:</span>
                       <span className="font-medium">
-                        {returnDate} • {selectedReturnFlight.departureTime} BST → {selectedReturnFlight.arrivalTime} BST
+                        {selectedReturnFlight.fromCode} → {selectedReturnFlight.toCode}
+                        {selectedReturnFlight.isConnecting && ' (Connecting via Alderney Airport)'}
                       </span>
                     </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Total Flight Time:</span>
-                      <span className="font-bold text-amber-800 font-mono">
-                        {calculateFlightDuration(selectedReturnFlight.departureTime, selectedReturnFlight.arrivalTime)} (Non-stop)
-                      </span>
-                    </div>
+                    {selectedReturnFlight.isConnecting && selectedReturnFlight.legs && selectedReturnFlight.legs.length >= 2 ? (
+                      <div className="my-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-100 space-y-1.5 font-mono text-[11px]">
+                        <div className="flex justify-between text-amber-950 font-bold">
+                          <span>Sector 1 ({selectedReturnFlight.legs[0].flightNumber}):</span>
+                          <span>{selectedReturnFlight.legs[0].fromCode} {selectedReturnFlight.legs[0].departureTime} → {selectedReturnFlight.legs[0].toCode} {selectedReturnFlight.legs[0].arrivalTime}</span>
+                        </div>
+                        <div className="flex justify-between text-amber-900 font-bold bg-amber-100/60 px-2 py-0.5 rounded border border-amber-200">
+                          <span>Layover / Connection:</span>
+                          <span>{selectedReturnFlight.layoverDuration || '45 mins'} at Alderney (ACI)</span>
+                        </div>
+                        <div className="flex justify-between text-amber-950 font-bold">
+                          <span>Sector 2 ({selectedReturnFlight.legs[1].flightNumber}):</span>
+                          <span>{selectedReturnFlight.legs[1].fromCode} {selectedReturnFlight.legs[1].departureTime} → {selectedReturnFlight.legs[1].toCode} {selectedReturnFlight.legs[1].arrivalTime}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600 pt-1 border-t border-amber-200/50">
+                          <span>Inbound Sector Fare:</span>
+                          <span className="font-bold text-amber-900">2 sectors × £{returnFare?.perSectorBaseTotal} = £{returnFare?.baseTotal}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between text-slate-600">
+                          <span>Departure & Arrival:</span>
+                          <span className="font-medium">
+                            {returnDate} • {selectedReturnFlight.departureTime} BST → {selectedReturnFlight.arrivalTime} BST
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-slate-600">
+                          <span>Total Flight Time:</span>
+                          <span className="font-bold text-amber-800 font-mono">
+                            {calculateFlightDuration(selectedReturnFlight.departureTime, selectedReturnFlight.arrivalTime)} (Non-stop)
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between text-slate-600">
                       <span>Aircraft & Seats:</span>
                       <span className="font-medium font-mono">{selectedReturnFlight.aircraftRegistration} • Seats {selectedReturnSeatIds.join(', ')}</span>
@@ -1363,21 +1605,36 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-left"
               >
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="font-bold text-[#6d3cc7] font-mono text-sm">{t.flightNumber}</span>
                     {t.legType && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-200/80 text-[#6d3cc7] uppercase">
                         {t.legType} LEG
                       </span>
                     )}
+                    {t.isConnecting && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                        Connecting Leg {t.connectingLegIndex || 1} of {t.totalConnectingLegs || 2} (Via {t.viaCode || 'ACI'})
+                      </span>
+                    )}
                     <span className="text-slate-400 font-mono">PNR: {t.pnr}</span>
                   </div>
-                  <div className="text-sm font-bold text-slate-800">
-                    {t.origin} → {t.destination}
+                  <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span>{t.origin} → {t.destination}</span>
+                    {t.isConnecting && (
+                      <span className="text-xs font-normal text-slate-500">
+                        (Part of journey {t.journeyOrigin} → {t.finalDestination})
+                      </span>
+                    )}
                   </div>
                   <div className="text-slate-500 text-[11px] mt-0.5">
-                    Date: {t.departureDate} at {t.departureTime} BST • Seat: <strong className="text-[#6d3cc7]">{t.seatNumber}</strong> • {t.passengerName}
+                    Date: {t.departureDate} at {t.departureTime} BST • Gate: <strong>{t.gate || 'GATE 1'}</strong> • Seat: <strong className="text-[#6d3cc7]">{t.seatNumber}</strong> • {t.passengerName}
                   </div>
+                  {t.isConnecting && t.layoverDuration && (
+                    <div className="text-[11px] text-amber-800 font-medium mt-1 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/60 inline-block">
+                      Connection: {t.layoverDuration} layover at Alderney Airport • Next flight: {t.connectingFlightNumber} at {t.connectingDepartureTime} BST
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">

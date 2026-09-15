@@ -319,8 +319,8 @@ export const INITIAL_SCHEDULES: RegularFlight[] = [
   {
     id: 'FE-108',
     flightNumber: 'FE-108',
-    departureTime: '17:30',
-    arrivalTime: '17:55',
+    departureTime: '18:15',
+    arrivalTime: '18:40',
     fromCode: 'ACI',
     toCode: 'JER',
     aircraftRegistration: 'G-ECLP',

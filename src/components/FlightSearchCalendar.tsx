@@ -261,7 +261,8 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                     <div className={`text-[10px] font-bold flex items-center gap-1 mt-0.5 ${
                       isSelectedTab ? 'text-amber-300' : 'text-amber-700'
                     }`}>
-                      <span>★ Search Date</span>
+                      <Plane className="w-3 h-3" />
+                      <span>Search Date</span>
                     </div>
                   )}
                 </div>
@@ -307,11 +308,12 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                     isSelectedTab ? 'text-purple-100' : isSearchDeparture ? 'text-amber-800' : 'text-slate-500'
                   }`}>
                     {dayFlights.length} {dayFlights.length === 1 ? 'option' : 'options'}
+                    {dayFlights[0]?.isConnecting ? ' (Via ACI)' : ''}
                   </span>
                   <span className={`font-black font-mono ${
                     isSelectedTab ? 'text-amber-300' : isSearchDeparture ? 'text-amber-700' : 'text-[#6d3cc7]'
                   }`}>
-                    £1,500
+                    {dayFlights[0]?.isConnecting ? '£3,000' : '£1,500'}
                   </span>
                 </div>
 
@@ -401,23 +403,52 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                           {/* Dedicated High-Visibility Flight Time Badge */}
                           <div className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-100/90 text-[#6d3cc7] font-mono font-black text-xs border border-purple-200 shadow-sm">
                             <Clock className="w-3.5 h-3.5 text-[#6d3cc7]" />
-                            <span>Flight Time: {flightDuration}</span>
+                            <span>
+                              {flight.isConnecting
+                                ? `Total: ${flight.totalTravelTime || flightDuration}`
+                                : `Flight Time: ${flightDuration}`}
+                            </span>
                           </div>
 
                           {/* Flight Trajectory Graphic */}
-                          <div className="w-28 sm:w-36 flex items-center my-2">
-                            <div className="h-0.5 w-full bg-slate-300"></div>
-                            <Plane className="w-4 h-4 text-[#6d3cc7] mx-1.5 shrink-0" />
-                            <div className="h-0.5 w-full bg-slate-300"></div>
-                          </div>
+                          {flight.isConnecting ? (
+                            <div className="w-44 sm:w-56 flex flex-col items-center my-2">
+                              <div className="w-full flex items-center justify-center">
+                                <div className="h-0.5 flex-1 bg-purple-300"></div>
+                                <Plane className="w-3.5 h-3.5 text-[#6d3cc7] mx-1 shrink-0" />
+                                <div className="h-0.5 w-3 bg-purple-300"></div>
+                                <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-purple-100 text-[#6d3cc7] border border-purple-300 mx-1 shrink-0">
+                                  ACI
+                                </span>
+                                <div className="h-0.5 w-3 bg-purple-300"></div>
+                                <Plane className="w-3.5 h-3.5 text-[#6d3cc7] mx-1 shrink-0" />
+                                <div className="h-0.5 flex-1 bg-purple-300"></div>
+                              </div>
+                              <span className="text-[9px] font-bold text-purple-700 mt-1 uppercase tracking-wider font-mono">
+                                Via Alderney (ACI)
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="w-28 sm:w-36 flex items-center my-2">
+                              <div className="h-0.5 w-full bg-slate-300"></div>
+                              <Plane className="w-4 h-4 text-[#6d3cc7] mx-1.5 shrink-0" />
+                              <div className="h-0.5 w-full bg-slate-300"></div>
+                            </div>
+                          )}
 
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
                               {flight.flightNumber}
                             </span>
-                            <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              Non-stop
-                            </span>
+                            {flight.isConnecting ? (
+                              <span className="text-[10px] uppercase font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                                1 Stop • Via Alderney
+                              </span>
+                            ) : (
+                              <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                Non-stop
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -445,8 +476,17 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                       {/* Price and Action Button */}
                       <div className="flex items-center justify-between lg:justify-end gap-5 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
                         <div className="text-left lg:text-right">
-                          <span className="text-[10px] uppercase text-slate-400 font-bold block">Base Fare</span>
-                          <span className="text-2xl font-black text-[#6d3cc7] font-mono">£1,500</span>
+                          <span className="text-[10px] uppercase text-slate-400 font-bold block">
+                            {flight.isConnecting ? 'Base Fare (2 Sectors)' : 'Base Fare'}
+                          </span>
+                          <span className="text-2xl font-black text-[#6d3cc7] font-mono">
+                            {flight.isConnecting ? '£3,000' : '£1,500'}
+                          </span>
+                          {flight.isConnecting && (
+                            <span className="text-[10px] text-slate-500 block font-mono">
+                              (£1,500/sector via ACI)
+                            </span>
+                          )}
                         </div>
 
                         <button
@@ -472,13 +512,59 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                       </div>
                     </div>
 
+                    {/* Connecting Flight Leg Breakdown Panel (if connecting) */}
+                    {flight.isConnecting && flight.legs && flight.legs.length >= 2 && (
+                      <div className="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-3.5 text-xs space-y-2.5">
+                        <div className="flex items-center justify-between text-[#6d3cc7] font-bold text-[11px]">
+                          <span className="flex items-center gap-1.5">
+                            <Plane className="w-3.5 h-3.5" /> Connecting Flight Breakdown Via Alderney (ACI)
+                          </span>
+                          <span className="font-mono bg-purple-200/70 text-purple-900 px-2 py-0.5 rounded text-[10px]">
+                            Layover at ACI: {flight.layoverDuration || '30 mins'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+                          <div className="bg-white p-2.5 rounded-xl border border-purple-100 shadow-2xs">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Sector 1 (Leg 1 of 2)
+                            </div>
+                            <div className="font-bold text-slate-900 text-xs flex items-center justify-between mt-0.5">
+                              <span>{flight.legs[0].flightNumber}: {flight.legs[0].fromCode} → {flight.legs[0].toCode}</span>
+                              <span className="font-mono text-[#6d3cc7]">{flight.legs[0].departureTime} - {flight.legs[0].arrivalTime} BST</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center justify-between">
+                              <span>Flight Duration: {flight.legs[0].duration}</span>
+                              <span className="font-mono text-[10px] font-bold text-amber-700">{flight.legs[0].aircraftRegistration}</span>
+                            </div>
+                          </div>
+                          <div className="bg-white p-2.5 rounded-xl border border-purple-100 shadow-2xs">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Sector 2 (Leg 2 of 2)
+                            </div>
+                            <div className="font-bold text-slate-900 text-xs flex items-center justify-between mt-0.5">
+                              <span>{flight.legs[1].flightNumber}: {flight.legs[1].fromCode} → {flight.legs[1].toCode}</span>
+                              <span className="font-mono text-[#6d3cc7]">{flight.legs[1].departureTime} - {flight.legs[1].arrivalTime} BST</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center justify-between">
+                              <span>Flight Duration: {flight.legs[1].duration}</span>
+                              <span className="font-mono text-[10px] font-bold text-amber-700">{flight.legs[1].aircraftRegistration}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Bottom Metadata & Specs Strip with Explicit Flight Time Indicator */}
                     <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
                       <div className="flex flex-wrap items-center gap-3 sm:gap-5">
                         {/* Highlighted Flight Time Box */}
                         <div className="flex items-center gap-1.5 bg-purple-50 text-[#6d3cc7] px-2.5 py-1 rounded-xl font-bold border border-purple-200">
                           <Clock className="w-3.5 h-3.5 text-[#6d3cc7]" />
-                          <span>Flight Time: {flightDuration}</span>
+                          <span>
+                            {flight.isConnecting
+                              ? `Total Journey: ${flight.totalTravelTime || flightDuration}`
+                              : `Flight Time: ${flightDuration}`}
+                          </span>
                         </div>
 
                         <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
@@ -513,8 +599,14 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                         </div>
                       </div>
 
-                      <div className="text-[11px] text-slate-400 font-mono hidden md:block">
-                        Non-stop Island Transit
+                      <div className="text-[11px] font-mono hidden md:block">
+                        {flight.isConnecting ? (
+                          <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-bold border border-amber-200">
+                            Connecting via Alderney (ACI)
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">Non-stop Island Transit</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -563,8 +655,8 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                       </span>
                     </div>
                     {isSearchDeparture && (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded block mt-1 text-center">
-                        ★ Departure Date
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center justify-center gap-1 mt-1 text-center">
+                        <Plane className="w-2.5 h-2.5" /> Departure Date
                       </span>
                     )}
                   </div>
@@ -601,7 +693,7 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                               isSelected ? 'bg-purple-900/60 text-purple-100 border border-purple-400/40' : 'bg-purple-50 text-[#6d3cc7] border border-purple-200'
                             }`}>
                               <Clock className="w-3 h-3 shrink-0" />
-                              <span>Flight Time: {calculateFlightDuration(flight.departureTime, flight.arrivalTime)}</span>
+                              <span>{flight.isConnecting ? `Total: ${flight.totalTravelTime || '1h 45m'}` : `Flight Time: ${calculateFlightDuration(flight.departureTime, flight.arrivalTime)}`}</span>
                             </div>
 
                             {/* Departure & Arrival Times */}
@@ -617,8 +709,10 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
                             </div>
 
                             <div className={`text-[10px] mt-1.5 flex items-center justify-between ${isSelected ? 'text-purple-200' : 'text-slate-500'}`}>
-                              <span>{flight.aircraftRegistration}</span>
-                              <span className="font-sans font-bold">Non-stop</span>
+                              <span className="font-mono">{flight.isConnecting ? 'Via ACI' : flight.aircraftRegistration}</span>
+                              <span className="font-sans font-bold">
+                                {flight.isConnecting ? '1-Stop • £3,000' : 'Non-stop • £1,500'}
+                              </span>
                             </div>
                             <button
                               type="button"
