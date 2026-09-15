@@ -751,7 +751,7 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
                       </div>
                       {b.isReturnTrip && (
                         <div className="text-[10px] text-amber-700 font-bold">
-                          + Return: {b.returnFlightNumber} on {b.returnDepartureDate}
+                          + Inbound: {b.returnFlightNumber} on {b.returnDepartureDate}
                         </div>
                       )}
                     </td>
@@ -765,7 +765,7 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
                       </span>
                       {b.returnSeatIds && b.returnSeatIds.length > 0 && (
                         <span className="font-mono font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded ml-1">
-                          Ret: {b.returnSeatIds.join(', ')}
+                          Inb: {b.returnSeatIds.join(', ')}
                         </span>
                       )}
                     </td>

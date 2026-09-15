@@ -13,10 +13,10 @@ export function downloadBoardingPassPDF(ticket: Ticket, booking?: Booking | null
     format: [210, 110], // 210mm wide, 110mm high (custom boarding pass aspect)
   });
 
-  const primaryColor = [109, 60, 199]; // #6d3cc7 FlyEclipse Purple
-  const darkTextColor = [30, 41, 59];   // #1e293b Slate 800
-  const lightBgColor = [248, 250, 252]; // #f8fafc Slate 50
-  const borderColor = [226, 232, 240];  // #e2e8f0 Slate 200
+  const primaryColor: [number, number, number] = [109, 60, 199]; // #6d3cc7 FlyEclipse Purple
+  const darkTextColor: [number, number, number] = [30, 41, 59];   // #1e293b Slate 800
+  const lightBgColor: [number, number, number] = [248, 250, 252]; // #f8fafc Slate 50
+  const borderColor: [number, number, number] = [226, 232, 240];  // #e2e8f0 Slate 200
 
   // Outer Border & Card Background
   doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
@@ -49,20 +49,19 @@ export function downloadBoardingPassPDF(ticket: Ticket, booking?: Booking | null
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(8, 22, 140, 78, 3, 3, 'FD');
 
-  // Origin -> Destination Display
+  // Origin -> Destination Display with Proper Fly Icon
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text(ticket.origin, 14, 33);
 
-  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.setFontSize(10);
-  doc.text('—►', 36, 32);
+  // Draw proper fly icon between origin and destination
+  drawRouteFlightIcon(doc, 28, 48, 30.2, primaryColor);
 
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(ticket.destination, 48, 33);
+  doc.text(ticket.destination, 50, 33);
 
   // Flight number & Aircraft
   doc.setFontSize(8);
@@ -259,4 +258,80 @@ export function downloadBoardingPassPDF(ticket: Ticket, booking?: Booking | null
   // Trigger browser download
   const filename = `FlyEclipse-BoardingPass-${ticket.pnr}-${ticket.seatNumber}.pdf`;
   doc.save(filename);
+}
+
+/**
+ * Draws a clean, crisp airplane / fly icon pointing from origin to destination (rightward)
+ * with flight path trajectory lines for the boarding pass.
+ */
+function drawRouteFlightIcon(
+  doc: jsPDF,
+  startX: number,
+  endX: number,
+  centerY: number,
+  primaryColor: [number, number, number]
+): void {
+  const midX = (startX + endX) / 2;
+  const iconSize = 6.5; // mm
+  const halfIcon = iconSize / 2;
+
+  // Trajectory Lines on either side of the airplane
+  doc.setDrawColor(203, 213, 225); // Slate 300
+  doc.setLineWidth(0.4);
+  doc.line(startX, centerY, midX - halfIcon - 1, centerY);
+  doc.line(midX + halfIcon + 1, centerY, endX, centerY);
+
+  let drawnWithCanvas = false;
+
+  // 1. High-resolution canvas rendering of standard flight aircraft icon
+  if (typeof document !== 'undefined') {
+    try {
+      const canvas = document.createElement('canvas');
+      const res = 256;
+      canvas.width = res;
+      canvas.height = res;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, res, res);
+        ctx.save();
+        // Translate to center and rotate 90 deg clockwise so the aircraft points right (east)
+        ctx.translate(res / 2, res / 2);
+        ctx.rotate(Math.PI / 2);
+        const scale = res / 24;
+        ctx.scale(scale, scale);
+        ctx.translate(-12, -12);
+
+        ctx.fillStyle = `rgb(${primaryColor[0]}, ${primaryColor[1]}, ${primaryColor[2]})`;
+        // Universal aircraft path
+        const planePath = new Path2D(
+          'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z'
+        );
+        ctx.fill(planePath);
+        ctx.restore();
+
+        const dataUrl = canvas.toDataURL('image/png');
+        doc.addImage(dataUrl, 'PNG', midX - halfIcon, centerY - halfIcon, iconSize, iconSize);
+        drawnWithCanvas = true;
+      }
+    } catch {
+      drawnWithCanvas = false;
+    }
+  }
+
+  // 2. Pure vector fallback if canvas is not available in environment
+  if (!drawnWithCanvas) {
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    // Main fuselage
+    doc.roundedRect(midX - 2.8, centerY - 0.5, 5.6, 1.0, 0.5, 0.5, 'F');
+    // Nose cone
+    doc.triangle(midX + 2.0, centerY - 0.5, midX + 2.0, centerY + 0.5, midX + 3.4, centerY, 'F');
+    // Top main wing (swept back)
+    doc.triangle(midX + 0.6, centerY - 0.4, midX - 1.0, centerY - 0.4, midX - 0.6, centerY - 3.0, 'F');
+    // Bottom main wing (swept back)
+    doc.triangle(midX + 0.6, centerY + 0.4, midX - 1.0, centerY + 0.4, midX - 0.6, centerY + 3.0, 'F');
+    // Top tail fin
+    doc.triangle(midX - 1.8, centerY - 0.3, midX - 2.8, centerY - 0.3, midX - 2.8, centerY - 1.5, 'F');
+    // Bottom tail fin
+    doc.triangle(midX - 1.8, centerY + 0.3, midX - 2.8, centerY + 0.3, midX - 2.8, centerY + 1.5, 'F');
+  }
 }

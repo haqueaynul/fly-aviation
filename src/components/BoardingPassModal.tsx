@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Ticket, Booking } from '../types';
-import { Plane, Calendar, Clock, MapPin, User, ShieldCheck, Download, Printer, X, Dog, CheckCircle, ArrowRight, FileCode } from 'lucide-react';
+import { Plane, Calendar, Clock, MapPin, User, ShieldCheck, Download, Printer, X, Dog, CheckCircle, ArrowRight } from 'lucide-react';
 import { downloadBoardingPassPDF } from '../utils/pdfGenerator';
-import rawBoardingPassHtml from '../template/boarding-pass.html?raw';
-
-export const boardingPassHtmlTemplate: string = rawBoardingPassHtml;
 
 interface BoardingPassModalProps {
   booking: Booking;
@@ -38,35 +35,6 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
     setTimeout(() => setDownloadSuccess(false), 4000);
   };
 
-  const handleDownloadHTML = () => {
-    let populatedHtml = rawBoardingPassHtml
-      .replace(/{{ORIGIN}}/g, activeTicket.origin)
-      .replace(/{{ORIGIN_NAME}}/g, activeTicket.origin === 'JER' ? 'Jersey St Peter' : activeTicket.origin === 'GCI' ? 'Guernsey Forest' : activeTicket.origin === 'ACI' ? 'Alderney Channel' : 'Bournemouth UK')
-      .replace(/{{DESTINATION}}/g, activeTicket.destination)
-      .replace(/{{DESTINATION_NAME}}/g, activeTicket.destination === 'JER' ? 'Jersey St Peter' : activeTicket.destination === 'GCI' ? 'Guernsey Forest' : activeTicket.destination === 'ACI' ? 'Alderney Channel' : 'Bournemouth UK')
-      .replace(/{{PASSENGER_NAME}}/g, activeTicket.passengerName)
-      .replace(/{{FLIGHT_NUMBER}}/g, activeTicket.flightNumber)
-      .replace(/{{FLIGHT_DATE}}/g, activeTicket.date)
-      .replace(/{{BOARDING_TIME}}/g, activeTicket.boardingTime)
-      .replace(/{{DEPARTURE_TIME}}/g, activeTicket.departureTime)
-      .replace(/{{GATE}}/g, activeTicket.gate)
-      .replace(/{{SEAT_NUMBER}}/g, activeTicket.seatNumber)
-      .replace(/{{PNR}}/g, activeTicket.pnr)
-      .replace(/{{PET_BAY_STATUS}}/g, activeTicket.petZone ? activeTicket.petZone.replace(/_/g, ' ') : 'None Allocated');
-
-    const blob = new Blob([populatedHtml], { type: 'text/html;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `FlyEclipse-BoardingPass-${activeTicket.pnr}-${activeTicket.seatNumber}.html`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setDownloadSuccess(true);
-    setTimeout(() => setDownloadSuccess(false), 4000);
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -93,13 +61,6 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownloadHTML}
-              className="px-3 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-900 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow border border-purple-400/40"
-              title="Export as standalone external HTML file from /template/boarding-pass.html"
-            >
-              <FileCode className="w-3.5 h-3.5" /> Export HTML
-            </button>
             <button
               onClick={handleDownloadPDF}
               className="px-3.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow"
@@ -137,7 +98,7 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
           </div>
         )}
 
-        {/* Multiple Tickets Selector (if Return trip or multi-passenger) */}
+        {/* Multiple Tickets Selector (if Inbound trip or multi-passenger) */}
         {ticketList.length > 1 && (
           <div className="bg-slate-100 px-6 py-2 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs">
             <span className="text-slate-500 font-bold shrink-0">Available Passes:</span>

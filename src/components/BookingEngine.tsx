@@ -4,7 +4,9 @@ import { AIRPORTS, CESSNA_SEATS } from '../data/mockData';
 import { calculateFare } from '../utils/pricing';
 import { CessnaSeatMap } from './CessnaSeatMap';
 import { BoardingPassModal } from './BoardingPassModal';
+import { FlightSearchCalendar } from './FlightSearchCalendar';
 import { downloadBoardingPassPDF } from '../utils/pdfGenerator';
+import { calculateFlightDuration } from '../utils/scheduleCalendar';
 import {
   Plane,
   Calendar,
@@ -26,6 +28,7 @@ import {
   Download,
   Copy,
   RotateCcw,
+  Search,
 } from 'lucide-react';
 
 interface BookingEngineProps {
@@ -55,6 +58,16 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
   // Selected Flights
   const [selectedFlight, setSelectedFlight] = useState<RegularFlight | null>(null);
   const [selectedReturnFlight, setSelectedReturnFlight] = useState<RegularFlight | null>(null);
+  const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
+
+  const handleExecuteSearch = () => {
+    setSearchFeedback(`Displaying 5-day schedule for ${origin} → ${destination} around departure date ${flightDate}`);
+    setTimeout(() => setSearchFeedback(null), 4000);
+    onLogEvent(
+      'FLIGHT_SEARCH',
+      `Searched 5-day flight schedule for route ${origin} to ${destination} around departure date ${flightDate}`
+    );
+  };
 
   // Selected Seats & Active Cabin Leg
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>(['1A']);
@@ -270,7 +283,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
     onLogEvent(
       'SEAT_HELD_2H',
       `Seats [${selectedSeatIds.join(', ')}] held for 2 hours on flight ${selectedFlight.flightNumber}${
-        selectedReturnFlight ? ` and return flight ${selectedReturnFlight.flightNumber}` : ''
+        selectedReturnFlight ? ` and inbound flight ${selectedReturnFlight.flightNumber}` : ''
       } under PNR ${pnrCode}`,
       booking.id
     );
@@ -341,7 +354,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
           hasPetAttached: hasPetsTravelling && pets.length > 0,
           petName: pets[0]?.name,
           checkedIn: false,
-          legType: 'RETURN',
+          legType: 'INBOUND',
         };
         generatedTickets.push(returnTicket);
       }
@@ -434,7 +447,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                     tripType === 'RETURN' ? 'bg-white text-[#6d3cc7] shadow' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Return Trip
+                  Return
                 </button>
               </div>
             </div>
@@ -523,7 +536,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                       Return Date
                     </label>
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#6d3cc7] text-white">
-                      Round Trip
+                      Return
                     </span>
                   </div>
                   <input
@@ -562,251 +575,72 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 </span>
               </label>
             </div>
-          </div>
 
-          {/* Section 1: Outbound Scheduled Flights */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#6d3cc7] text-white flex items-center justify-center font-bold text-xs">
-                    1
-                  </span>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Select Outbound Flight: {origin} → {destination}
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-500 ml-8">
-                  Departure Date: {flightDate} • Cessna 208B Grand Caravan EX
-                </p>
+            {/* Flight Search Button Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2 text-xs text-slate-600">
+                <Calendar className="w-4 h-4 text-[#6d3cc7]" />
+                <span>
+                  Searching <strong>{origin} → {destination}</strong> • 5-day schedule window (1 day back & 4 days forward)
+                </span>
               </div>
-              <span className="text-xs font-mono text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-bold">
-                {availableOutboundFlights.length} Flights Available
-              </span>
+              <button
+                type="button"
+                onClick={handleExecuteSearch}
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#6d3cc7] hover:bg-[#5b32a8] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+              >
+                <Search className="w-4 h-4" />
+                <span>Search 5-Day Schedules</span>
+              </button>
             </div>
 
-            {availableOutboundFlights.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center">
-                <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-                <h4 className="text-base font-bold text-slate-800">No Direct Flights on This Leg</h4>
-                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                  Try selecting routes between Jersey (JER), Alderney (ACI), Guernsey (GCI), and Bournemouth (BOH).
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {availableOutboundFlights.map((flight) => {
-                  const isSelected = selectedFlight?.id === flight.id;
-                  return (
-                    <div
-                      key={flight.id}
-                      onClick={() => setSelectedFlight(flight)}
-                      className={`cursor-pointer bg-white rounded-3xl p-5 md:p-6 border transition-all flex flex-col md:flex-row items-center justify-between gap-4 ${
-                        isSelected
-                          ? 'border-[#6d3cc7] ring-2 ring-[#6d3cc7]/30 shadow-md bg-purple-50/20'
-                          : 'border-slate-200 hover:border-slate-300 shadow-sm'
-                      }`}
-                    >
-                      {/* Time and Route */}
-                      <div className="flex items-center gap-6 w-full md:w-auto">
-                        <div>
-                          <span className="text-2xl font-black text-slate-900 font-mono">
-                            {flight.departureTime}
-                          </span>
-                          <span className="text-xs text-slate-500 block font-semibold">{flight.fromCode}</span>
-                        </div>
-
-                        <div className="flex flex-col items-center px-4">
-                          <span className="text-[11px] font-mono text-[#6d3cc7] font-bold">
-                            {flight.flightNumber}
-                          </span>
-                          <div className="w-24 md:w-32 flex items-center my-1">
-                            <div className="h-0.5 w-full bg-slate-200"></div>
-                            <Plane className="w-4 h-4 text-[#6d3cc7] mx-1 shrink-0" />
-                            <div className="h-0.5 w-full bg-slate-200"></div>
-                          </div>
-                          <span className="text-[10px] text-slate-400">Non-stop 25-45m</span>
-                        </div>
-
-                        <div>
-                          <span className="text-2xl font-black text-slate-900 font-mono">
-                            {flight.arrivalTime}
-                          </span>
-                          <span className="text-xs text-slate-500 block font-semibold">{flight.toCode}</span>
-                        </div>
-                      </div>
-
-                      {/* Aircraft & Capacity */}
-                      <div className="flex items-center gap-4 text-xs text-slate-600">
-                        <div className="text-left">
-                          <span className="font-bold text-slate-800 block">Cessna Caravan</span>
-                          <span className="font-mono text-amber-600 font-semibold">{flight.aircraftRegistration}</span>
-                        </div>
-                        <div className="h-8 w-px bg-slate-200"></div>
-                        <div>
-                          <span className="font-bold text-emerald-600 block">
-                            {flight.availableSeatsCount} / 8 Seats Free
-                          </span>
-                          <span className="text-slate-400">2 Pet Bays</span>
-                        </div>
-                      </div>
-
-                      {/* Price & Select Indicator */}
-                      <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                        <div className="text-right">
-                          <span className="text-[10px] uppercase text-slate-400 font-bold block">From (P1)</span>
-                          <span className="text-xl font-black text-[#6d3cc7] font-mono">£1,500</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFlight(flight);
-                          }}
-                          className={`px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all ${
-                            isSelected
-                              ? 'bg-[#6d3cc7] text-white shadow-md'
-                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                          }`}
-                        >
-                          {isSelected ? (
-                            <>
-                              <CheckCircle2 className="w-4 h-4 text-white" /> Selected Outbound
-                            </>
-                          ) : (
-                            'Select Outbound'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+            {searchFeedback && (
+              <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 text-xs font-bold text-[#6d3cc7] flex items-center gap-2 animate-in fade-in">
+                <Sparkles className="w-4 h-4" />
+                <span>{searchFeedback}</span>
               </div>
             )}
           </div>
 
-          {/* Section 2: Return Scheduled Flights (when tripType === 'RETURN') */}
+          {/* 5-Day Outbound Flight Schedule Calendar */}
+          <FlightSearchCalendar
+            origin={origin}
+            destination={destination}
+            departureDate={flightDate}
+            selectedFlight={selectedFlight}
+            onSelectFlight={(flight) => {
+              setSelectedFlight(flight);
+              setFlightDate(flight.date);
+              onLogEvent('ENTITY_CRUD', `Selected outbound flight ${flight.flightNumber} on ${flight.date}`);
+            }}
+            allSchedules={schedules}
+            legLabel="Outbound"
+            stepNumber={1}
+            onDateChange={(newDate) => {
+              setFlightDate(newDate);
+            }}
+          />
+
+          {/* 5-Day Return Flight Schedule Calendar (when tripType === 'RETURN') */}
           {tripType === 'RETURN' && (
-            <div className="space-y-4 pt-4 border-t border-slate-200 animate-in fade-in">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs">
-                      2
-                    </span>
-                    <h3 className="text-lg font-bold text-slate-900">
-                      Select Return Flight: {destination} → {origin}
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-500 ml-8">
-                    Return Date: {returnDate} • Cessna 208B Grand Caravan EX
-                  </p>
-                </div>
-                <span className="text-xs font-mono text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-bold">
-                  {availableReturnFlights.length} Flights Available
-                </span>
-              </div>
-
-              {availableReturnFlights.length === 0 ? (
-                <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center">
-                  <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-                  <h4 className="text-base font-bold text-slate-800">No Return Flights Scheduled on This Leg</h4>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                    Try checking routes between Jersey, Guernsey, Alderney, and Bournemouth.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {availableReturnFlights.map((flight) => {
-                    const isSelected = selectedReturnFlight?.id === flight.id;
-                    return (
-                      <div
-                        key={flight.id}
-                        onClick={() => setSelectedReturnFlight(flight)}
-                        className={`cursor-pointer bg-white rounded-3xl p-5 md:p-6 border transition-all flex flex-col md:flex-row items-center justify-between gap-4 ${
-                          isSelected
-                            ? 'border-amber-500 ring-2 ring-amber-500/30 shadow-md bg-amber-50/20'
-                            : 'border-slate-200 hover:border-slate-300 shadow-sm'
-                        }`}
-                      >
-                        {/* Time and Route */}
-                        <div className="flex items-center gap-6 w-full md:w-auto">
-                          <div>
-                            <span className="text-2xl font-black text-slate-900 font-mono">
-                              {flight.departureTime}
-                            </span>
-                            <span className="text-xs text-slate-500 block font-semibold">{flight.fromCode}</span>
-                          </div>
-
-                          <div className="flex flex-col items-center px-4">
-                            <span className="text-[11px] font-mono text-amber-700 font-bold">
-                              {flight.flightNumber}
-                            </span>
-                            <div className="w-24 md:w-32 flex items-center my-1">
-                              <div className="h-0.5 w-full bg-slate-200"></div>
-                              <Plane className="w-4 h-4 text-amber-600 mx-1 shrink-0" />
-                              <div className="h-0.5 w-full bg-slate-200"></div>
-                            </div>
-                            <span className="text-[10px] text-slate-400">Non-stop 25-45m</span>
-                          </div>
-
-                          <div>
-                            <span className="text-2xl font-black text-slate-900 font-mono">
-                              {flight.arrivalTime}
-                            </span>
-                            <span className="text-xs text-slate-500 block font-semibold">{flight.toCode}</span>
-                          </div>
-                        </div>
-
-                        {/* Aircraft & Capacity */}
-                        <div className="flex items-center gap-4 text-xs text-slate-600">
-                          <div className="text-left">
-                            <span className="font-bold text-slate-800 block">Cessna Caravan</span>
-                            <span className="font-mono text-amber-600 font-semibold">{flight.aircraftRegistration}</span>
-                          </div>
-                          <div className="h-8 w-px bg-slate-200"></div>
-                          <div>
-                            <span className="font-bold text-emerald-600 block">
-                              {flight.availableSeatsCount} / 8 Seats Free
-                            </span>
-                            <span className="text-slate-400">2 Pet Bays</span>
-                          </div>
-                        </div>
-
-                        {/* Price & Select Indicator */}
-                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                          <div className="text-right">
-                            <span className="text-[10px] uppercase text-slate-400 font-bold block">From (P1)</span>
-                            <span className="text-xl font-black text-amber-700 font-mono">£1,500</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedReturnFlight(flight);
-                            }}
-                            className={`px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all ${
-                              isSelected
-                                ? 'bg-amber-500 text-slate-950 shadow-md'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                            }`}
-                          >
-                            {isSelected ? (
-                              <>
-                                <CheckCircle2 className="w-4 h-4 text-slate-950" /> Selected Return
-                              </>
-                            ) : (
-                              'Select Return'
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="pt-4 border-t border-slate-200">
+              <FlightSearchCalendar
+                origin={destination}
+                destination={origin}
+                departureDate={returnDate}
+                selectedFlight={selectedReturnFlight}
+                onSelectFlight={(flight) => {
+                  setSelectedReturnFlight(flight);
+                  setReturnDate(flight.date);
+                  onLogEvent('ENTITY_CRUD', `Selected inbound flight ${flight.flightNumber} on ${flight.date}`);
+                }}
+                allSchedules={schedules}
+                legLabel="Inbound"
+                stepNumber={2}
+                onDateChange={(newDate) => {
+                  setReturnDate(newDate);
+                }}
+              />
             </div>
           )}
 
@@ -814,10 +648,17 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
           <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-xs">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="font-bold text-slate-800">Outbound:</span>
+                <span className="font-bold text-slate-800">Outbound Flight:</span>
                 {selectedFlight ? (
-                  <span className="font-mono bg-purple-50 text-[#6d3cc7] px-2 py-0.5 rounded font-bold">
-                    {selectedFlight.flightNumber} ({selectedFlight.departureTime} BST) • {flightDate}
+                  <span className="font-mono bg-purple-50 text-[#6d3cc7] px-2.5 py-1 rounded-lg font-bold flex items-center gap-2 border border-purple-200">
+                    <span>{selectedFlight.flightNumber}</span>
+                    <span>•</span>
+                    <span>Departs {selectedFlight.departureTime} BST → Arrives {selectedFlight.arrivalTime} BST</span>
+                    <span className="bg-purple-200/60 text-purple-900 px-1.5 py-0.2 rounded text-[11px]">
+                      Flight Time: {calculateFlightDuration(selectedFlight.departureTime, selectedFlight.arrivalTime)}
+                    </span>
+                    <span>•</span>
+                    <span>{flightDate}</span>
                   </span>
                 ) : (
                   <span className="text-amber-600 font-medium italic">Please select an outbound flight above</span>
@@ -825,14 +666,21 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
               </div>
 
               {tripType === 'RETURN' && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-bold text-slate-800">Return Leg:</span>
+                <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                  <span className="font-bold text-slate-800">Inbound Flight:</span>
                   {selectedReturnFlight ? (
-                    <span className="font-mono bg-amber-50 text-amber-800 px-2 py-0.5 rounded font-bold">
-                      {selectedReturnFlight.flightNumber} ({selectedReturnFlight.departureTime} BST) • {returnDate}
+                    <span className="font-mono bg-amber-50 text-amber-900 px-2.5 py-1 rounded-lg font-bold flex items-center gap-2 border border-amber-200">
+                      <span>{selectedReturnFlight.flightNumber}</span>
+                      <span>•</span>
+                      <span>Departs {selectedReturnFlight.departureTime} BST → Arrives {selectedReturnFlight.arrivalTime} BST</span>
+                      <span className="bg-amber-200/60 text-amber-950 px-1.5 py-0.2 rounded text-[11px]">
+                        Flight Time: {calculateFlightDuration(selectedReturnFlight.departureTime, selectedReturnFlight.arrivalTime)}
+                      </span>
+                      <span>•</span>
+                      <span>{returnDate}</span>
                     </span>
                   ) : (
-                    <span className="text-amber-600 font-medium italic">Please select a return flight above</span>
+                    <span className="text-amber-600 font-medium italic">Please select an inbound flight above</span>
                   )}
                 </div>
               )}
@@ -905,7 +753,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                   }`}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Return Leg ({destination} → {origin})</span>
+                  <span>Inbound Leg ({destination} → {origin})</span>
                   <span className="font-mono text-[10px] bg-black/20 px-1.5 py-0.5 rounded">
                     Seats: {selectedReturnSeatIds.join(', ')}
                   </span>
@@ -926,14 +774,14 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
           )}
 
           {/* Active Cabin Map Header */}
-          <div className="p-3 bg-slate-100 rounded-xl flex items-center justify-between text-xs">
+          <div className="p-3.5 bg-[#6d3cc7]/[0.05] rounded-2xl border border-[#6d3cc7]/15 flex items-center justify-between text-xs">
             <span className="font-bold text-slate-800">
               Configuring Cabin for:{' '}
               {activeCabinLeg === 'OUTBOUND'
                 ? `Outbound Flight ${selectedFlight.flightNumber} (${selectedFlight.fromCode} → ${selectedFlight.toCode}) • ${flightDate}`
-                : `Return Flight ${selectedReturnFlight?.flightNumber} (${selectedReturnFlight?.fromCode} → ${selectedReturnFlight?.toCode}) • ${returnDate}`}
+                : `Inbound Flight ${selectedReturnFlight?.flightNumber} (${selectedReturnFlight?.fromCode} → ${selectedReturnFlight?.toCode}) • ${returnDate}`}
             </span>
-            <span className="font-mono text-slate-500">
+            <span className="font-mono text-[#6d3cc7] font-bold">
               {activeCabinLeg === 'OUTBOUND' ? selectedFlight.aircraftRegistration : selectedReturnFlight?.aircraftRegistration}
             </span>
           </div>
@@ -963,7 +811,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 </span>
                 {returnFare && (
                   <span>
-                    • Return ({selectedReturnSeatIds.length} pax): <strong className="font-mono text-amber-700">£{returnFare.baseTotal}</strong>
+                    • Inbound ({selectedReturnSeatIds.length} pax): <strong className="font-mono text-amber-700">£{returnFare.baseTotal}</strong>
                   </span>
                 )}
                 {hasPetsTravelling && pets.length > 0 && (
@@ -1036,7 +884,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                     </span>
                     <span className="font-mono text-xs bg-purple-100 text-[#6d3cc7] px-2 py-0.5 rounded font-bold">
                       Outbound Seat: {selectedSeatIds[idx] || '1A'}
-                      {tripType === 'RETURN' && ` • Return Seat: ${selectedReturnSeatIds[idx] || selectedSeatIds[idx] || '1A'}`}
+                      {tripType === 'RETURN' && ` • Inbound Seat: ${selectedReturnSeatIds[idx] || selectedSeatIds[idx] || '1A'}`}
                     </span>
                     {idx === 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#6d3cc7] font-bold text-[10px]">
@@ -1325,8 +1173,16 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                     <span className="font-medium">{selectedFlight.fromCode} → {selectedFlight.toCode}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Departure:</span>
-                    <span className="font-medium">{flightDate} at {selectedFlight.departureTime} BST</span>
+                    <span>Departure & Arrival:</span>
+                    <span className="font-medium">
+                      {flightDate} • {selectedFlight.departureTime} BST → {selectedFlight.arrivalTime} BST
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Total Flight Time:</span>
+                    <span className="font-bold text-[#6d3cc7] font-mono">
+                      {calculateFlightDuration(selectedFlight.departureTime, selectedFlight.arrivalTime)} (Non-stop)
+                    </span>
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>Aircraft & Seats:</span>
@@ -1338,7 +1194,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 {tripType === 'RETURN' && selectedReturnFlight && (
                   <div className="border-b border-slate-200 pb-2">
                     <div className="flex items-center justify-between font-bold text-slate-800">
-                      <span className="text-amber-700">RETURN LEG</span>
+                      <span className="text-amber-700">INBOUND LEG</span>
                       <span className="font-mono">{selectedReturnFlight.flightNumber}</span>
                     </div>
                     <div className="flex justify-between text-slate-600 mt-1">
@@ -1346,8 +1202,16 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                       <span className="font-medium">{selectedReturnFlight.fromCode} → {selectedReturnFlight.toCode}</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
-                      <span>Departure:</span>
-                      <span className="font-medium">{returnDate} at {selectedReturnFlight.departureTime} BST</span>
+                      <span>Departure & Arrival:</span>
+                      <span className="font-medium">
+                        {returnDate} • {selectedReturnFlight.departureTime} BST → {selectedReturnFlight.arrivalTime} BST
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Total Flight Time:</span>
+                      <span className="font-bold text-amber-800 font-mono">
+                        {calculateFlightDuration(selectedReturnFlight.departureTime, selectedReturnFlight.arrivalTime)} (Non-stop)
+                      </span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Aircraft & Seats:</span>

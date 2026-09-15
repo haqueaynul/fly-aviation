@@ -215,7 +215,7 @@ export interface Ticket {
   hasPetAttached: boolean;
   petName?: string;
   checkedIn: boolean;
-  legType?: 'OUTBOUND' | 'RETURN';
+  legType?: 'OUTBOUND' | 'RETURN' | 'INBOUND';
 }
 
 export interface PilotCrew {
