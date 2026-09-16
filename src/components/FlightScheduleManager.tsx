@@ -1,22 +1,48 @@
 import React, { useState } from 'react';
-import { RegularFlight } from '../types';
-import { Plane, Clock, AlertTriangle, CheckCircle, Edit3, Plus, Bell, RefreshCw } from 'lucide-react';
+import { RegularFlight, Airport, Route, Aircraft, PilotCrew } from '../types';
+import { AIRPORTS, MOCK_ROUTES, MOCK_AIRCRAFTS, MOCK_CREW } from '../data/mockData';
+import { Plane, Clock, AlertTriangle, CheckCircle, Edit3, Plus, Bell, RefreshCw, MapPin, Database } from 'lucide-react';
 
 interface FlightScheduleManagerProps {
   schedules: RegularFlight[];
   onUpdateStatus: (flightId: string, status: RegularFlight['status'], remark?: string) => void;
   userRole: string;
+  airports?: Airport[];
+  routes?: Route[];
+  aircrafts?: Aircraft[];
+  crew?: PilotCrew[];
+  onAddSchedule?: (flight: RegularFlight) => void;
+  onNavigateToEntities?: () => void;
 }
 
 export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
   schedules,
   onUpdateStatus,
   userRole,
+  airports = AIRPORTS,
+  routes = MOCK_ROUTES,
+  aircrafts = MOCK_AIRCRAFTS,
+  crew = MOCK_CREW,
+  onAddSchedule,
+  onNavigateToEntities,
 }) => {
   const [editingFlight, setEditingFlight] = useState<RegularFlight | null>(null);
   const [editStatus, setEditStatus] = useState<RegularFlight['status']>('ON_TIME');
   const [editRemark, setEditRemark] = useState<string>('');
   const [filterWave, setFilterWave] = useState<'ALL' | 'MORNING' | 'AFTERNOON'>('ALL');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // New Flight Form state
+  const [newFlightForm, setNewFlightForm] = useState({
+    flightNumber: 'FE-',
+    date: '2026-09-14',
+    fromCode: airports[0]?.code || 'JER',
+    toCode: airports[1]?.code || 'ACI',
+    departureTime: '09:00',
+    arrivalTime: '09:35',
+    aircraftRegistration: aircrafts[0]?.registration || '2-FECA',
+    pilotId: crew[0]?.id || 'PILOT-1',
+  });
 
   const canEdit = ['SUPER_ADMIN', 'ADMIN', 'TENANT_ADMIN', 'TENANT_ADMIN_ASSISTANT'].includes(userRole);
 
@@ -34,6 +60,31 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
     setEditingFlight(null);
   };
 
+  const handleCreateFlightSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onAddSchedule) return;
+
+    const newFlight: RegularFlight = {
+      id: `FL-${Date.now()}-${newFlightForm.flightNumber}`,
+      flightNumber: newFlightForm.flightNumber.toUpperCase(),
+      date: newFlightForm.date,
+      fromCode: newFlightForm.fromCode,
+      toCode: newFlightForm.toCode,
+      departureTime: newFlightForm.departureTime,
+      arrivalTime: newFlightForm.arrivalTime,
+      aircraftRegistration: newFlightForm.aircraftRegistration,
+      pilotId: newFlightForm.pilotId || crew[0]?.id || 'PILOT-1',
+      status: 'ON_TIME',
+      availableSeatsCount: 8,
+      bookedSeats: [],
+      reservedSeats: [],
+      isConnecting: false,
+    };
+
+    onAddSchedule(newFlight);
+    setIsAddModalOpen(false);
+  };
+
   return (
     <div id="flight-schedule-manager" className="space-y-6">
       {/* Header */}
@@ -46,12 +97,33 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
             Channel Islands Regular Timetable
           </h2>
           <p className="text-xs text-slate-500">
-            Official daily schedule between Jersey, Bournemouth, Alderney, and Guernsey.
+            Official daily schedule across {airports.length} network airports and {routes.length} corridors.
           </p>
         </div>
 
-        {/* Filter controls */}
-        <div className="flex items-center gap-2">
+        {/* Action & Filter controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {onNavigateToEntities && (
+            <button
+              onClick={onNavigateToEntities}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+              title="Manage Airports and Routes in Entity Management"
+            >
+              <Database className="w-3.5 h-3.5 text-[#6d3cc7]" />
+              Airports & Routes
+            </button>
+          )}
+
+          {canEdit && onAddSchedule && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2 bg-[#6d3cc7] hover:bg-[#5426a5] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-200 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Schedule Flight
+            </button>
+          )}
+
           <div className="bg-slate-100 p-1 rounded-xl flex text-xs font-bold">
             <button
               onClick={() => setFilterWave('ALL')}
@@ -59,7 +131,7 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
                 filterWave === 'ALL' ? 'bg-white text-[#6d3cc7] shadow' : 'text-slate-600'
               }`}
             >
-              All Waves ({schedules.length})
+              All ({schedules.length})
             </button>
             <button
               onClick={() => setFilterWave('MORNING')}
@@ -67,7 +139,7 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
                 filterWave === 'MORNING' ? 'bg-white text-[#6d3cc7] shadow' : 'text-slate-600'
               }`}
             >
-              Morning (07:30 - 11:30)
+              Morning
             </button>
             <button
               onClick={() => setFilterWave('AFTERNOON')}
@@ -75,7 +147,7 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
                 filterWave === 'AFTERNOON' ? 'bg-white text-[#6d3cc7] shadow' : 'text-slate-600'
               }`}
             >
-              Afternoon (13:30 - 17:30)
+              Afternoon
             </button>
           </div>
         </div>
@@ -165,7 +237,10 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
                       <Plane className="w-3.5 h-3.5 text-[#6d3cc7]" />
                       <span className="font-bold text-slate-900 text-sm">{flight.toCode}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400">Direct Island Hop</span>
+                    <span className="text-[10px] text-slate-400">
+                      {airports.find((a) => a.code === flight.fromCode)?.islandOrCity || flight.fromCode} →{' '}
+                      {airports.find((a) => a.code === flight.toCode)?.islandOrCity || flight.toCode}
+                    </span>
                   </td>
                   <td className="py-4 px-6">
                     <span className="font-mono font-bold text-sm text-slate-800">{flight.arrivalTime}</span>
@@ -294,6 +369,180 @@ export const FlightScheduleManager: React.FC<FlightScheduleManagerProps> = ({
                   className="px-5 py-2 rounded-xl bg-[#6d3cc7] hover:bg-[#5426a5] text-white font-bold shadow"
                 >
                   Broadcast Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule New Flight Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-slate-900 text-lg">Schedule New Flight</h3>
+                <p className="text-xs text-slate-500">
+                  Assign corridor, departure time, and aircraft across network airports.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateFlightSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Flight Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={newFlightForm.flightNumber}
+                    onChange={(e) => setNewFlightForm({ ...newFlightForm, flightNumber: e.target.value.toUpperCase() })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-slate-900"
+                    placeholder="FE-109"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={newFlightForm.date}
+                    onChange={(e) => setNewFlightForm({ ...newFlightForm, date: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Departure Airport (Origin)</label>
+                  <select
+                    value={newFlightForm.fromCode}
+                    onChange={(e) => {
+                      const newFrom = e.target.value;
+                      const matchedRoute = routes.find((r) => r.fromCode === newFrom && r.toCode === newFlightForm.toCode);
+                      let newArr = newFlightForm.arrivalTime;
+                      if (matchedRoute && newFlightForm.departureTime) {
+                        const [dh, dm] = newFlightForm.departureTime.split(':').map(Number);
+                        if (!isNaN(dh) && !isNaN(dm)) {
+                          const total = dh * 60 + dm + matchedRoute.flightTimeMinutes;
+                          newArr = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                        }
+                      }
+                      setNewFlightForm({ ...newFlightForm, fromCode: newFrom, arrivalTime: newArr });
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                  >
+                    {airports.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.code} - {a.name} ({a.islandOrCity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Arrival Airport (Destination)</label>
+                  <select
+                    value={newFlightForm.toCode}
+                    onChange={(e) => {
+                      const newTo = e.target.value;
+                      const matchedRoute = routes.find((r) => r.fromCode === newFlightForm.fromCode && r.toCode === newTo);
+                      let newArr = newFlightForm.arrivalTime;
+                      if (matchedRoute && newFlightForm.departureTime) {
+                        const [dh, dm] = newFlightForm.departureTime.split(':').map(Number);
+                        if (!isNaN(dh) && !isNaN(dm)) {
+                          const total = dh * 60 + dm + matchedRoute.flightTimeMinutes;
+                          newArr = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                        }
+                      }
+                      setNewFlightForm({ ...newFlightForm, toCode: newTo, arrivalTime: newArr });
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                  >
+                    {airports.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.code} - {a.name} ({a.islandOrCity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Departure Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={newFlightForm.departureTime}
+                    onChange={(e) => setNewFlightForm({ ...newFlightForm, departureTime: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Arrival Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={newFlightForm.arrivalTime}
+                    onChange={(e) => setNewFlightForm({ ...newFlightForm, arrivalTime: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Aircraft</label>
+                  <select
+                    value={newFlightForm.aircraftRegistration}
+                    onChange={(e) => setNewFlightForm({ ...newFlightForm, aircraftRegistration: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-slate-900"
+                  >
+                    {aircrafts.map((ac) => (
+                      <option key={ac.registration} value={ac.registration}>
+                        {ac.registration} ({ac.model})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Assigned Captain / Pilot</label>
+                  <select
+                    value={newFlightForm.pilotId}
+                    onChange={(e) => setNewFlightForm({ ...newFlightForm, pilotId: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                  >
+                    {crew.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#6d3cc7] hover:bg-[#5426a5] text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Create Flight Schedule
                 </button>
               </div>
             </form>

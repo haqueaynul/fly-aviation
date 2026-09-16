@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RegularFlight, Airport, SeatInfo, PassengerInfo, PetInfo, Booking, Ticket, UserProfile } from '../types';
+import { RegularFlight, Airport, Route, SeatInfo, PassengerInfo, PetInfo, Booking, Ticket, UserProfile } from '../types';
 import { AIRPORTS, CESSNA_SEATS } from '../data/mockData';
 import { calculateFare } from '../utils/pricing';
 import { CessnaSeatMap } from './CessnaSeatMap';
@@ -34,6 +34,8 @@ import {
 interface BookingEngineProps {
   schedules: RegularFlight[];
   currentUser: UserProfile;
+  airports?: Airport[];
+  routes?: Route[];
   onBookingConfirmed: (newBooking: Booking, newTickets: Ticket | Ticket[]) => void;
   onLogEvent: (eventType: any, details: string, entityId?: string) => void;
 }
@@ -41,9 +43,12 @@ interface BookingEngineProps {
 export const BookingEngine: React.FC<BookingEngineProps> = ({
   schedules,
   currentUser,
+  airports,
+  routes,
   onBookingConfirmed,
   onLogEvent,
 }) => {
+  const airportList = airports && airports.length > 0 ? airports : AIRPORTS;
   // Stepper state: 1: SEARCH, 2: SEAT_SELECTION, 3: PASSENGER_DETAILS, 4: PAYMENT_CONFIRMATION, 5: SUCCESS_TICKET
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
@@ -644,7 +649,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                   }}
                   className="w-full bg-transparent font-bold text-slate-800 text-sm focus:outline-none"
                 >
-                  {AIRPORTS.map((a) => (
+                  {airportList.map((a) => (
                     <option key={a.code} value={a.code} disabled={a.code === destination}>
                       {a.code} - {a.name} ({a.islandOrCity})
                     </option>
@@ -678,7 +683,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                   }}
                   className="w-full bg-transparent font-bold text-slate-800 text-sm focus:outline-none"
                 >
-                  {AIRPORTS.map((a) => (
+                  {airportList.map((a) => (
                     <option key={a.code} value={a.code} disabled={a.code === origin}>
                       {a.code} - {a.name} ({a.islandOrCity})
                     </option>
@@ -790,6 +795,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
               onLogEvent('ENTITY_CRUD', `Selected outbound flight ${flight.flightNumber} on ${flight.date}`);
             }}
             allSchedules={schedules}
+            airports={airportList}
             legLabel="Outbound"
             stepNumber={1}
             onDateChange={(newDate) => {
@@ -811,6 +817,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                   onLogEvent('ENTITY_CRUD', `Selected inbound flight ${flight.flightNumber} on ${flight.date}`);
                 }}
                 allSchedules={schedules}
+                airports={airportList}
                 legLabel="Inbound"
                 stepNumber={2}
                 onDateChange={(newDate) => {

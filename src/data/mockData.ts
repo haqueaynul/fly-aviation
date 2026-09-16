@@ -1,4 +1,4 @@
-import { Airport, Aircraft, RegularFlight, PilotCrew, MaintenanceLog, AuditLog, SeatInfo, UserProfile } from '../types';
+import { Airport, Aircraft, Route, RegularFlight, PilotCrew, MaintenanceLog, AuditLog, SeatInfo, UserProfile } from '../types';
 
 export const AIRPORTS: Airport[] = [
   {
@@ -597,8 +597,25 @@ export const INITIAL_BOOKINGS: import('../types').Booking[] = [
   },
 ];
 
+// Channel Islands and Regional Routes
+export const INITIAL_ROUTES: Route[] = [
+  { id: 'RT-JER-ACI', fromCode: 'JER', toCode: 'ACI', flightTimeMinutes: 30, nauticalMiles: 32, isCharterOnly: false },
+  { id: 'RT-ACI-JER', fromCode: 'ACI', toCode: 'JER', flightTimeMinutes: 25, nauticalMiles: 32, isCharterOnly: false },
+  { id: 'RT-ACI-BOH', fromCode: 'ACI', toCode: 'BOH', flightTimeMinutes: 45, nauticalMiles: 68, isCharterOnly: false },
+  { id: 'RT-BOH-ACI', fromCode: 'BOH', toCode: 'ACI', flightTimeMinutes: 45, nauticalMiles: 68, isCharterOnly: false },
+  { id: 'RT-JER-GCI', fromCode: 'JER', toCode: 'GCI', flightTimeMinutes: 20, nauticalMiles: 24, isCharterOnly: false },
+  { id: 'RT-GCI-JER', fromCode: 'GCI', toCode: 'JER', flightTimeMinutes: 20, nauticalMiles: 24, isCharterOnly: false },
+  { id: 'RT-GCI-ACI', fromCode: 'GCI', toCode: 'ACI', flightTimeMinutes: 25, nauticalMiles: 28, isCharterOnly: false },
+  { id: 'RT-ACI-GCI', fromCode: 'ACI', toCode: 'GCI', flightTimeMinutes: 25, nauticalMiles: 28, isCharterOnly: false },
+  { id: 'RT-JER-BOH', fromCode: 'JER', toCode: 'BOH', viaCode: 'ACI', flightTimeMinutes: 105, nauticalMiles: 100, isCharterOnly: false },
+  { id: 'RT-BOH-JER', fromCode: 'BOH', toCode: 'JER', viaCode: 'ACI', flightTimeMinutes: 115, nauticalMiles: 100, isCharterOnly: false },
+  { id: 'RT-JER-BQH', fromCode: 'JER', toCode: 'BQH', flightTimeMinutes: 65, nauticalMiles: 165, isCharterOnly: true },
+  { id: 'RT-BQH-JER', fromCode: 'BQH', toCode: 'JER', flightTimeMinutes: 65, nauticalMiles: 165, isCharterOnly: true },
+];
+
 // Re-exports with standard MOCK_ prefixes for flexible importing
 export const MOCK_AIRPORTS = AIRPORTS;
+export const MOCK_ROUTES = INITIAL_ROUTES;
 export const MOCK_AIRCRAFTS = AIRCRAFTS;
 export const MOCK_SCHEDULES = INITIAL_SCHEDULES;
 export const MOCK_CREW = CREW_MEMBERS;

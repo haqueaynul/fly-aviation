@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   MOCK_AIRPORTS,
+  MOCK_ROUTES,
   MOCK_AIRCRAFTS,
   MOCK_SCHEDULES,
   MOCK_CREW,
@@ -10,6 +11,8 @@ import {
   MOCK_AUDIT_LOGS,
 } from './data/mockData';
 import {
+  Airport,
+  Route,
   RegularFlight,
   Aircraft,
   PilotCrew,
@@ -58,6 +61,8 @@ export default function App() {
 
   // Application State
   const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USER);
+  const [airports, setAirports] = useState<Airport[]>(MOCK_AIRPORTS);
+  const [routes, setRoutes] = useState<Route[]>(MOCK_ROUTES);
   const [schedules, setSchedules] = useState<RegularFlight[]>(MOCK_SCHEDULES);
   const [aircrafts, setAircrafts] = useState<Aircraft[]>(MOCK_AIRCRAFTS);
   const [crew, setCrew] = useState<PilotCrew[]>(MOCK_CREW);
@@ -234,6 +239,16 @@ export default function App() {
       } issued.`,
       'success'
     );
+  };
+
+  const handleAddSchedule = (newFlight: RegularFlight) => {
+    setSchedules((prev) => [newFlight, ...prev]);
+    handleLogEvent(
+      'ENTITY_CRUD',
+      `Created FlightSchedule [${newFlight.flightNumber}] (${newFlight.fromCode} -> ${newFlight.toCode})`,
+      newFlight.id
+    );
+    showNotification(`Flight ${newFlight.flightNumber} scheduled successfully`, 'success');
   };
 
   return (
@@ -417,6 +432,10 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'ENTITIES' && (
           <EntityManagement
+            airports={airports}
+            onUpdateAirports={setAirports}
+            routes={routes}
+            onUpdateRoutes={setRoutes}
             aircrafts={aircrafts}
             onUpdateAircrafts={setAircrafts}
             schedules={schedules}
@@ -436,6 +455,8 @@ export default function App() {
 
         {activeTab === 'BOOKING' && (
           <BookingEngine
+            airports={airports}
+            routes={routes}
             schedules={schedules}
             currentUser={currentUser}
             onBookingConfirmed={handleBookingConfirmed}
@@ -453,7 +474,13 @@ export default function App() {
 
         {activeTab === 'SCHEDULES' && (
           <FlightScheduleManager
+            airports={airports}
+            routes={routes}
             schedules={schedules}
+            aircrafts={aircrafts}
+            crew={crew}
+            onAddSchedule={handleAddSchedule}
+            onNavigateToEntities={() => setActiveTab('ENTITIES')}
             onUpdateStatus={handleUpdateFlightStatus}
             userRole={currentUser.role}
           />

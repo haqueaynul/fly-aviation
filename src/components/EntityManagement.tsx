@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   Aircraft,
+  Airport,
+  Route,
   Booking,
   PassengerInfo,
   PetInfo,
@@ -35,9 +37,18 @@ import {
   Download,
   Eye,
   RefreshCw,
+  MapPin,
+  Globe,
+  ArrowRightLeft,
+  Navigation,
+  ExternalLink,
 } from 'lucide-react';
 
 interface EntityManagementProps {
+  airports: Airport[];
+  onUpdateAirports: (airports: Airport[]) => void;
+  routes: Route[];
+  onUpdateRoutes: (routes: Route[]) => void;
   aircrafts: Aircraft[];
   onUpdateAircrafts: (aircrafts: Aircraft[]) => void;
   schedules: RegularFlight[];
@@ -55,8 +66,10 @@ interface EntityManagementProps {
 }
 
 type EntityCategory =
-  | 'Aircraft'
+  | 'Airport'
+  | 'Route'
   | 'FlightSchedule'
+  | 'Aircraft'
   | 'Booking'
   | 'Passenger'
   | 'Pet'
@@ -65,6 +78,10 @@ type EntityCategory =
   | 'MaintenanceLog';
 
 export const EntityManagement: React.FC<EntityManagementProps> = ({
+  airports,
+  onUpdateAirports,
+  routes,
+  onUpdateRoutes,
   aircrafts,
   onUpdateAircrafts,
   schedules,
@@ -80,10 +97,104 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
   currentUser,
   onLogEvent,
 }) => {
-  const [activeEntity, setActiveEntity] = useState<EntityCategory>('Aircraft');
+  const [activeEntity, setActiveEntity] = useState<EntityCategory>('Airport');
   const [searchTerm, setSearchTerm] = useState('');
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT' | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  // Form states for Airport Domain
+  const [airportForm, setAirportForm] = useState<Partial<Airport>>({
+    code: 'SOU',
+    icao: 'EGHI',
+    name: 'Southampton Airport',
+    islandOrCity: 'Southampton (Hampshire, UK)',
+    country: 'United Kingdom',
+    timezone: 'Europe/London (GMT/BST)',
+    lat: 50.9503,
+    lng: -1.3568,
+    isRegularIsland: false,
+  });
+
+  // Form states for Route Domain
+  const [routeForm, setRouteForm] = useState<Partial<Route>>({
+    id: 'RT-JER-SOU',
+    fromCode: 'JER',
+    toCode: 'SOU',
+    viaCode: '',
+    flightTimeMinutes: 35,
+    nauticalMiles: 85,
+    isCharterOnly: false,
+  });
+
+  // Popular regional airport presets
+  const REGIONAL_AIRPORT_PRESETS = [
+    {
+      code: 'SOU',
+      icao: 'EGHI',
+      name: 'Southampton Airport',
+      islandOrCity: 'Southampton (Hampshire, UK)',
+      country: 'United Kingdom',
+      timezone: 'Europe/London (GMT/BST)',
+      lat: 50.9503,
+      lng: -1.3568,
+      isRegularIsland: false,
+    },
+    {
+      code: 'EXT',
+      icao: 'EGTE',
+      name: 'Exeter Airport',
+      islandOrCity: 'Exeter (Devon, UK)',
+      country: 'United Kingdom',
+      timezone: 'Europe/London (GMT/BST)',
+      lat: 50.7344,
+      lng: -3.4139,
+      isRegularIsland: false,
+    },
+    {
+      code: 'IOM',
+      icao: 'EGNS',
+      name: 'Isle of Man Ronaldsway Airport',
+      islandOrCity: 'Castletown (Isle of Man)',
+      country: 'Isle of Man / UK',
+      timezone: 'Europe/London (GMT/BST)',
+      lat: 54.0833,
+      lng: -4.6239,
+      isRegularIsland: false,
+    },
+    {
+      code: 'DNR',
+      icao: 'LFRD',
+      name: 'Dinard–Pleurtuit Airport',
+      islandOrCity: 'Dinard / Saint-Malo (Brittany)',
+      country: 'France',
+      timezone: 'Europe/Paris (CET)',
+      lat: 48.5878,
+      lng: -2.0800,
+      isRegularIsland: false,
+    },
+    {
+      code: 'CER',
+      icao: 'LFRC',
+      name: 'Cherbourg Maupertus Airport',
+      islandOrCity: 'Cherbourg (Normandy)',
+      country: 'France',
+      timezone: 'Europe/Paris (CET)',
+      lat: 49.6500,
+      lng: -1.4700,
+      isRegularIsland: false,
+    },
+    {
+      code: 'LCY',
+      icao: 'EGLC',
+      name: 'London City Airport',
+      islandOrCity: 'London (Docklands)',
+      country: 'United Kingdom',
+      timezone: 'Europe/London (GMT/BST)',
+      lat: 51.5053,
+      lng: 0.0553,
+      isRegularIsland: false,
+    },
+  ];
 
   // Form states for adding/editing Aircraft
   const [aircraftForm, setAircraftForm] = useState<Partial<Aircraft>>({
@@ -176,6 +287,158 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
       });
     });
   });
+
+  // ---------------------------------------------
+  // AIRPORT CRUD HANDLERS
+  // ---------------------------------------------
+  const handleSaveAirport = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = (airportForm.code || '').trim().toUpperCase();
+    const icao = (airportForm.icao || '').trim().toUpperCase();
+    const name = (airportForm.name || '').trim();
+    const islandOrCity = (airportForm.islandOrCity || '').trim();
+    const country = (airportForm.country || '').trim() || 'United Kingdom';
+    const timezone = (airportForm.timezone || '').trim() || 'Europe/London (GMT/BST)';
+    const lat = Number(airportForm.lat) || 0;
+    const lng = Number(airportForm.lng) || 0;
+    const isRegularIsland = Boolean(airportForm.isRegularIsland);
+
+    if (!code || code.length !== 3) {
+      alert('Please enter a valid 3-letter IATA code (e.g. SOU, EXT, IOM)');
+      return;
+    }
+    if (!icao || icao.length !== 4) {
+      alert('Please enter a valid 4-letter ICAO code (e.g. EGHI, EGTE, LFRD)');
+      return;
+    }
+    if (!name) {
+      alert('Please enter an airport name');
+      return;
+    }
+
+    if (modalMode === 'ADD') {
+      if (airports.some((a) => a.code.toUpperCase() === code)) {
+        alert(`Airport with IATA code ${code} already exists!`);
+        return;
+      }
+      const newAirport: Airport = {
+        code,
+        icao,
+        name,
+        islandOrCity: islandOrCity || name,
+        country,
+        timezone,
+        lat,
+        lng,
+        isRegularIsland,
+      };
+      onUpdateAirports([...airports, newAirport]);
+      onLogEvent('ENTITY_CRUD', `Created Airport entity [${code}] ${name} (${icao})`, code);
+    } else if (modalMode === 'EDIT' && editingItem) {
+      const updated = airports.map((a) =>
+        a.code === editingItem.code
+          ? {
+              ...a,
+              code,
+              icao,
+              name,
+              islandOrCity: islandOrCity || name,
+              country,
+              timezone,
+              lat,
+              lng,
+              isRegularIsland,
+            }
+          : a
+      );
+      onUpdateAirports(updated);
+      onLogEvent('ENTITY_CRUD', `Updated Airport entity [${code}] ${name}`, code);
+    }
+    setModalMode(null);
+    setEditingItem(null);
+  };
+
+  const handleDeleteAirport = (code: string, name: string) => {
+    const hasSchedules = schedules.some((f) => f.fromCode === code || f.toCode === code);
+    const hasBookings = bookings.some((b) => b.origin === code || b.destination === code);
+    const promptMsg = hasSchedules || hasBookings
+      ? `Warning: Airport ${code} (${name}) has active schedules or bookings associated with it. Deleting this will also remove connected routes. Confirm deletion?`
+      : `Confirm deletion of Airport ${code} (${name})?`;
+
+    if (confirm(promptMsg)) {
+      onUpdateAirports(airports.filter((a) => a.code !== code));
+      onUpdateRoutes(routes.filter((r) => r.fromCode !== code && r.toCode !== code));
+      onLogEvent('ENTITY_CRUD', `Deleted Airport entity [${code}] ${name}`, code);
+    }
+  };
+
+  // ---------------------------------------------
+  // ROUTE CRUD HANDLERS
+  // ---------------------------------------------
+  const handleSaveRoute = (e: React.FormEvent) => {
+    e.preventDefault();
+    const fromCode = (routeForm.fromCode || '').trim().toUpperCase();
+    const toCode = (routeForm.toCode || '').trim().toUpperCase();
+    const viaCode = (routeForm.viaCode || '').trim().toUpperCase() || undefined;
+    const flightTimeMinutes = Number(routeForm.flightTimeMinutes) || 30;
+    const nauticalMiles = Number(routeForm.nauticalMiles) || 40;
+    const isCharterOnly = Boolean(routeForm.isCharterOnly);
+
+    if (!fromCode || !toCode) {
+      alert('Please select origin and destination airports');
+      return;
+    }
+    if (fromCode === toCode) {
+      alert('Origin and Destination airports must be different!');
+      return;
+    }
+
+    const generatedId = (routeForm.id || '').trim() || `RT-${fromCode}-${toCode}${viaCode ? '-' + viaCode : ''}`;
+
+    if (modalMode === 'ADD') {
+      if (routes.some((r) => r.id === generatedId)) {
+        alert(`Route with ID ${generatedId} already exists!`);
+        return;
+      }
+      const newRoute: Route = {
+        id: generatedId,
+        fromCode,
+        toCode,
+        viaCode,
+        flightTimeMinutes,
+        nauticalMiles,
+        isCharterOnly,
+      };
+      onUpdateRoutes([...routes, newRoute]);
+      onLogEvent('ENTITY_CRUD', `Created Route entity [${newRoute.id}] (${fromCode} -> ${toCode})`, newRoute.id);
+    } else if (modalMode === 'EDIT' && editingItem) {
+      const updated = routes.map((r) =>
+        r.id === editingItem.id
+          ? {
+              ...r,
+              id: generatedId,
+              fromCode,
+              toCode,
+              viaCode,
+              flightTimeMinutes,
+              nauticalMiles,
+              isCharterOnly,
+            }
+          : r
+      );
+      onUpdateRoutes(updated);
+      onLogEvent('ENTITY_CRUD', `Updated Route entity [${editingItem.id}]`, editingItem.id);
+    }
+    setModalMode(null);
+    setEditingItem(null);
+  };
+
+  const handleDeleteRoute = (id: string) => {
+    if (confirm(`Confirm deletion of Route entity ${id}?`)) {
+      onUpdateRoutes(routes.filter((r) => r.id !== id));
+      onLogEvent('ENTITY_CRUD', `Deleted Route entity [${id}]`, id);
+    }
+  };
 
   // ---------------------------------------------
   // AIRCRAFT CRUD HANDLERS
@@ -386,6 +649,52 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
 
         {/* Global Action */}
         <div className="flex items-center gap-2">
+          {activeEntity === 'Airport' && (
+            <button
+              id="btn-add-airport"
+              onClick={() => {
+                setAirportForm({
+                  code: '',
+                  icao: '',
+                  name: '',
+                  islandOrCity: '',
+                  country: 'United Kingdom',
+                  timezone: 'Europe/London (GMT/BST)',
+                  lat: 50.0,
+                  lng: -2.0,
+                  isRegularIsland: false,
+                });
+                setModalMode('ADD');
+              }}
+              className="px-4 py-2 bg-[#6d3cc7] hover:bg-[#5426a5] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Airport Domain
+            </button>
+          )}
+
+          {activeEntity === 'Route' && (
+            <button
+              id="btn-add-route"
+              onClick={() => {
+                const defaultFrom = airports[0]?.code || 'JER';
+                const defaultTo = airports[1]?.code || 'ACI';
+                setRouteForm({
+                  id: `RT-${defaultFrom}-${defaultTo}`,
+                  fromCode: defaultFrom,
+                  toCode: defaultTo,
+                  viaCode: '',
+                  flightTimeMinutes: 35,
+                  nauticalMiles: 60,
+                  isCharterOnly: false,
+                });
+                setModalMode('ADD');
+              }}
+              className="px-4 py-2 bg-[#6d3cc7] hover:bg-[#5426a5] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Route Domain
+            </button>
+          )}
+
           {activeEntity === 'Aircraft' && (
             <button
               onClick={() => {
@@ -485,8 +794,10 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
       {/* Entity Tabs Selector */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {[
-          { id: 'Aircraft', label: 'Aircraft Domain', count: aircrafts.length, icon: Plane },
+          { id: 'Airport', label: 'Airport Domain', count: airports.length, icon: MapPin },
+          { id: 'Route', label: 'Route Domain', count: routes.length, icon: Navigation },
           { id: 'FlightSchedule', label: 'FlightSchedule Domain', count: schedules.length, icon: Calendar },
+          { id: 'Aircraft', label: 'Aircraft Domain', count: aircrafts.length, icon: Plane },
           { id: 'Booking', label: 'Booking Domain', count: bookings.length, icon: Database },
           { id: 'Ticket', label: 'Ticket Domain', count: tickets.length, icon: TicketIcon },
           { id: 'Passenger', label: 'Passenger Manifest', count: allPassengers.length, icon: Users },
@@ -539,6 +850,324 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
           <span>Multi-Tenancy Mode: Tenant Discriminator (FLYECLIPSE_CI)</span>
         </div>
       </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 0A. AIRPORT DOMAIN TABLE */}
+      {/* ------------------------------------------------------------- */}
+      {activeEntity === 'Airport' && (
+        <div className="space-y-4">
+          {/* Quick-Add Presets bar */}
+          <div className="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div>
+              <div className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#6d3cc7]" />
+                <span>Quick-Add Regional Airports & Transfer Hubs</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Click any regional destination preset to pre-fill coordinates, ICAO, and timezone:
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {REGIONAL_AIRPORT_PRESETS.map((preset) => {
+                const exists = airports.some((a) => a.code === preset.code);
+                return (
+                  <button
+                    key={preset.code}
+                    disabled={exists}
+                    onClick={() => {
+                      setAirportForm(preset);
+                      setModalMode('ADD');
+                    }}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      exists
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                        : 'bg-white hover:bg-purple-100 text-[#6d3cc7] border border-purple-200 shadow-2xs hover:scale-102'
+                    }`}
+                    title={exists ? `${preset.code} already in database` : `Add ${preset.name}`}
+                  >
+                    <span>+ {preset.code}</span>
+                    <span className="text-[9px] opacity-75 font-normal">({preset.name.split(' ')[0]})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                <tr>
+                  <th className="p-4">IATA / ICAO</th>
+                  <th className="p-4">Airport Name</th>
+                  <th className="p-4">Island / City & Country</th>
+                  <th className="p-4">Timezone</th>
+                  <th className="p-4">GPS Coordinates</th>
+                  <th className="p-4">Commuter Type</th>
+                  <th className="p-4">Routes</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {airports
+                  .filter(
+                    (a) =>
+                      a.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      a.islandOrCity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      a.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      a.icao.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((a) => {
+                    const connectedRoutesCount = routes.filter(
+                      (r) => r.fromCode === a.code || r.toCode === a.code
+                    ).length;
+                    return (
+                      <tr key={a.code} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-sm bg-purple-50 text-[#6d3cc7] px-2 py-0.5 rounded-lg border border-purple-200">
+                              {a.code}
+                            </span>
+                            <span className="font-mono text-[11px] text-slate-500">
+                              {a.icao}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4 font-bold text-slate-900">
+                          {a.name}
+                        </td>
+                        <td className="p-4">
+                          <div className="text-slate-800 font-medium">{a.islandOrCity}</div>
+                          <div className="text-[10px] text-slate-400">{a.country}</div>
+                        </td>
+                        <td className="p-4 font-mono text-[11px] text-slate-600">
+                          {a.timezone}
+                        </td>
+                        <td className="p-4 font-mono text-[11px] text-slate-500">
+                          <div>Lat: {a.lat.toFixed(4)}</div>
+                          <div>Lng: {a.lng.toFixed(4)}</div>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                              a.isRegularIsland
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            }`}
+                          >
+                            {a.isRegularIsland ? 'Island Core Hub' : 'Regional / Mainland'}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded-full bg-purple-50 text-[#6d3cc7] font-bold text-[11px] border border-purple-200">
+                            {connectedRoutesCount} route{connectedRoutesCount === 1 ? '' : 's'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              const otherAirport = airports.find((x) => x.code !== a.code);
+                              setRouteForm({
+                                id: `RT-${a.code}-${otherAirport?.code || 'JER'}`,
+                                fromCode: a.code,
+                                toCode: otherAirport?.code || 'JER',
+                                viaCode: '',
+                                flightTimeMinutes: 35,
+                                nauticalMiles: 65,
+                                isCharterOnly: false,
+                              });
+                              setActiveEntity('Route');
+                              setModalMode('ADD');
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-bold text-[#6d3cc7] hover:bg-purple-50 rounded-lg border border-purple-200 transition-all inline-flex items-center gap-1"
+                            title="Add a route connecting this airport"
+                          >
+                            <Plus className="w-3 h-3" /> Route
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingItem(a);
+                              setAirportForm(a);
+                              setModalMode('EDIT');
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-[#6d3cc7] hover:bg-purple-50 rounded-lg transition-all"
+                            title="Edit Airport Entity"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAirport(a.code, a.name)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                            title="Delete Airport Entity"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 0B. ROUTE DOMAIN TABLE */}
+      {/* ------------------------------------------------------------- */}
+      {activeEntity === 'Route' && (
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <tr>
+                <th className="p-4">Route ID</th>
+                <th className="p-4">Origin & Destination</th>
+                <th className="p-4">Transfer Hub (Via)</th>
+                <th className="p-4">Flight Duration</th>
+                <th className="p-4">Distance</th>
+                <th className="p-4">Service Type</th>
+                <th className="p-4">Active Flights</th>
+                <th className="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium">
+              {routes
+                .filter(
+                  (r) =>
+                    r.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    r.fromCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    r.toCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (r.viaCode && r.viaCode.toLowerCase().includes(searchTerm.toLowerCase()))
+                )
+                .map((r) => {
+                  const fromAirport = airports.find((a) => a.code === r.fromCode);
+                  const toAirport = airports.find((a) => a.code === r.toCode);
+                  const viaAirport = r.viaCode ? airports.find((a) => a.code === r.viaCode) : null;
+                  const activeFlightsCount = schedules.filter(
+                    (s) => s.fromCode === r.fromCode && s.toCode === r.toCode
+                  ).length;
+
+                  return (
+                    <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-4 font-mono font-bold text-slate-900">
+                        <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-lg border border-slate-200">
+                          {r.id}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <span className="font-mono font-black text-[#6d3cc7] text-xs">
+                              {r.fromCode}
+                            </span>
+                            <span className="text-[11px] text-slate-500 ml-1">
+                              ({fromAirport?.name || r.fromCode})
+                            </span>
+                          </div>
+                          <ArrowRightLeft className="w-3.5 h-3.5 text-[#6d3cc7] shrink-0" />
+                          <div>
+                            <span className="font-mono font-black text-[#6d3cc7] text-xs">
+                              {r.toCode}
+                            </span>
+                            <span className="text-[11px] text-slate-500 ml-1">
+                              ({toAirport?.name || r.toCode})
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {r.viaCode ? (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
+                            Via {r.viaCode} ({viaAirport?.name || r.viaCode})
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-mono text-[11px]">Direct Sector</span>
+                        )}
+                      </td>
+                      <td className="p-4 font-mono">
+                        <div className="flex items-center gap-1 text-slate-800 font-bold">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{r.flightTimeMinutes} mins</span>
+                        </div>
+                      </td>
+                      <td className="p-4 font-mono text-slate-600">
+                        {r.nauticalMiles} NM
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                            r.isCharterOnly
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {r.isCharterOnly ? 'Charter Exclusive' : 'Scheduled Commuter'}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">
+                          {activeFlightsCount} schedule{activeFlightsCount === 1 ? '' : 's'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            // Calculate default arrival time
+                            const depHour = 9;
+                            const depMin = 0;
+                            const totalArrivalMin = depHour * 60 + depMin + r.flightTimeMinutes;
+                            const arrH = Math.floor(totalArrivalMin / 60) % 24;
+                            const arrM = totalArrivalMin % 60;
+                            const arrStr = `${String(arrH).padStart(2, '0')}:${String(arrM).padStart(2, '0')}`;
+
+                            setFlightForm({
+                              flightNumber: 'FE-' + Math.floor(100 + Math.random() * 899),
+                              departureTime: '09:00',
+                              arrivalTime: arrStr,
+                              fromCode: r.fromCode,
+                              toCode: r.toCode,
+                              aircraftRegistration: aircrafts[0]?.registration || 'G-ECLP',
+                              pilotId: crew[0]?.id || 'PLT-01',
+                              status: 'ON_TIME',
+                              date: '2026-09-14',
+                              availableSeatsCount: 8,
+                              bookedSeats: [],
+                              reservedSeats: [],
+                            });
+                            setActiveEntity('FlightSchedule');
+                            setModalMode('ADD');
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-[#6d3cc7] hover:bg-purple-50 rounded-lg border border-purple-200 transition-all inline-flex items-center gap-1"
+                          title="Create a flight schedule for this route"
+                        >
+                          <Plus className="w-3 h-3" /> Flight
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingItem(r);
+                            setRouteForm(r);
+                            setModalMode('EDIT');
+                          }}
+                          className="p-1.5 text-slate-500 hover:text-[#6d3cc7] hover:bg-purple-50 rounded-lg transition-all"
+                          title="Edit Route Entity"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRoute(r.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                          title="Delete Route Entity"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 1. AIRCRAFT DOMAIN TABLE */}
@@ -1188,6 +1817,354 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
       )}
 
       {/* ------------------------------------------------------------- */}
+      {/* MODAL: ADD / EDIT AIRPORT */}
+      {/* ------------------------------------------------------------- */}
+      {modalMode && activeEntity === 'Airport' && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-slate-900 text-lg">
+                  {modalMode === 'ADD' ? 'Add New Airport Entity' : 'Edit Airport Entity'}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Register departure/destination hubs in the FlyEclipse network.
+                </p>
+              </div>
+              <button
+                onClick={() => setModalMode(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAirport} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    IATA Code (3 letters) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={3}
+                    value={airportForm.code || ''}
+                    disabled={modalMode === 'EDIT'}
+                    onChange={(e) => setAirportForm({ ...airportForm, code: e.target.value.toUpperCase() })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-slate-900 disabled:opacity-60"
+                    placeholder="SOU"
+                  />
+                  <span className="text-[10px] text-slate-400">e.g. SOU, EXT, IOM, LCY</span>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    ICAO Code (4 letters) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={4}
+                    value={airportForm.icao || ''}
+                    onChange={(e) => setAirportForm({ ...airportForm, icao: e.target.value.toUpperCase() })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-slate-900"
+                    placeholder="EGHI"
+                  />
+                  <span className="text-[10px] text-slate-400">e.g. EGHI, EGTE, EGNS</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Airport Official Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={airportForm.name || ''}
+                  onChange={(e) => setAirportForm({ ...airportForm, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                  placeholder="Southampton Airport"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Island or City / Region</label>
+                  <input
+                    type="text"
+                    required
+                    value={airportForm.islandOrCity || ''}
+                    onChange={(e) => setAirportForm({ ...airportForm, islandOrCity: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
+                    placeholder="Southampton (Hampshire, UK)"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Country / Territory</label>
+                  <input
+                    type="text"
+                    required
+                    value={airportForm.country || ''}
+                    onChange={(e) => setAirportForm({ ...airportForm, country: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
+                    placeholder="United Kingdom"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Timezone</label>
+                <select
+                  value={airportForm.timezone || 'Europe/London (GMT/BST)'}
+                  onChange={(e) => setAirportForm({ ...airportForm, timezone: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
+                >
+                  <option value="Europe/London (GMT/BST)">Europe/London (GMT/BST)</option>
+                  <option value="Europe/Paris (CET)">Europe/Paris (CET / UTC+1)</option>
+                  <option value="UTC">UTC / GMT</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">GPS Latitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    required
+                    value={airportForm.lat ?? 50.0}
+                    onChange={(e) => setAirportForm({ ...airportForm, lat: parseFloat(e.target.value) })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">GPS Longitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    required
+                    value={airportForm.lng ?? -2.0}
+                    onChange={(e) => setAirportForm({ ...airportForm, lng: parseFloat(e.target.value) })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(airportForm.isRegularIsland)}
+                    onChange={(e) => setAirportForm({ ...airportForm, isRegularIsland: e.target.checked })}
+                    className="rounded text-[#6d3cc7] focus:ring-[#6d3cc7]"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-800">Core Channel Island Hub</span>
+                    <p className="text-[10px] text-slate-500">
+                      Check if this airport is an integral Bailiwick island (e.g., Jersey, Alderney, Guernsey).
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalMode(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#6d3cc7] hover:bg-[#5426a5] text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {modalMode === 'ADD' ? 'Save Airport' : 'Update Airport'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: ADD / EDIT ROUTE */}
+      {/* ------------------------------------------------------------- */}
+      {modalMode && activeEntity === 'Route' && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-slate-900 text-lg">
+                  {modalMode === 'ADD' ? 'Create Route Entity' : 'Edit Route Entity'}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Establish a scheduled or charter corridor between any two airports.
+                </p>
+              </div>
+              <button
+                onClick={() => setModalMode(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRoute} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Route Identifier</label>
+                <input
+                  type="text"
+                  value={routeForm.id || ''}
+                  onChange={(e) => setRouteForm({ ...routeForm, id: e.target.value.toUpperCase() })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono font-bold text-slate-900"
+                  placeholder={`RT-${routeForm.fromCode || 'JER'}-${routeForm.toCode || 'SOU'}`}
+                />
+                <span className="text-[10px] text-slate-400">Leave blank to auto-generate (e.g. RT-JER-SOU)</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Origin Airport (From) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={routeForm.fromCode || ''}
+                    onChange={(e) => {
+                      const newFrom = e.target.value;
+                      setRouteForm((prev) => ({
+                        ...prev,
+                        fromCode: newFrom,
+                        id: `RT-${newFrom}-${prev.toCode || ''}`,
+                      }));
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                  >
+                    {airports.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.code} - {a.name} ({a.islandOrCity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Destination Airport (To) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={routeForm.toCode || ''}
+                    onChange={(e) => {
+                      const newTo = e.target.value;
+                      setRouteForm((prev) => ({
+                        ...prev,
+                        toCode: newTo,
+                        id: `RT-${prev.fromCode || ''}-${newTo}`,
+                      }));
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                  >
+                    {airports.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.code} - {a.name} ({a.islandOrCity})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Optional Connecting Hub (Via Airport)
+                </label>
+                <select
+                  value={routeForm.viaCode || ''}
+                  onChange={(e) => setRouteForm({ ...routeForm, viaCode: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
+                >
+                  <option value="">None (Direct Corridor)</option>
+                  {airports.map((a) => (
+                    <option key={a.code} value={a.code}>
+                      Via {a.code} - {a.name} ({a.islandOrCity})
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-slate-400">
+                  Select if flight routes through a transfer hub (e.g. Alderney ACI layover).
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Flight Time (Minutes) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={300}
+                    required
+                    value={routeForm.flightTimeMinutes ?? 35}
+                    onChange={(e) => setRouteForm({ ...routeForm, flightTimeMinutes: parseInt(e.target.value) || 30 })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Distance (Nautical Miles) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={1000}
+                    required
+                    value={routeForm.nauticalMiles ?? 60}
+                    onChange={(e) => setRouteForm({ ...routeForm, nauticalMiles: parseInt(e.target.value) || 50 })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(routeForm.isCharterOnly)}
+                    onChange={(e) => setRouteForm({ ...routeForm, isCharterOnly: e.target.checked })}
+                    className="rounded text-[#6d3cc7] focus:ring-[#6d3cc7]"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-800">Charter Exclusive Route</span>
+                    <p className="text-[10px] text-slate-500">
+                      When checked, this route is preserved for private air taxi / ad-hoc charters rather than regular daily commuter flights.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalMode(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#6d3cc7] hover:bg-[#5426a5] text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {modalMode === 'ADD' ? 'Save Route' : 'Update Route'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
       {/* MODAL: ADD / EDIT AIRCRAFT */}
       {/* ------------------------------------------------------------- */}
       {modalMode && activeEntity === 'Aircraft' && (
@@ -1379,26 +2356,52 @@ export const EntityManagement: React.FC<EntityManagementProps> = ({
                   <label className="font-bold text-slate-700 block mb-1">Origin (From)</label>
                   <select
                     value={flightForm.fromCode}
-                    onChange={(e) => setFlightForm({ ...flightForm, fromCode: e.target.value })}
+                    onChange={(e) => {
+                      const newFrom = e.target.value;
+                      const matchingRoute = routes.find((r) => r.fromCode === newFrom && r.toCode === flightForm.toCode);
+                      let newArr = flightForm.arrivalTime;
+                      if (matchingRoute && flightForm.departureTime) {
+                        const [dh, dm] = flightForm.departureTime.split(':').map(Number);
+                        if (!isNaN(dh) && !isNaN(dm)) {
+                          const total = dh * 60 + dm + matchingRoute.flightTimeMinutes;
+                          newArr = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                        }
+                      }
+                      setFlightForm({ ...flightForm, fromCode: newFrom, arrivalTime: newArr });
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
                   >
-                    <option value="JER">JER (Jersey)</option>
-                    <option value="ACI">ACI (Alderney)</option>
-                    <option value="GCI">GCI (Guernsey)</option>
-                    <option value="BOH">BOH (Bournemouth)</option>
+                    {airports.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.code} - {a.name} ({a.islandOrCity})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Destination (To)</label>
                   <select
                     value={flightForm.toCode}
-                    onChange={(e) => setFlightForm({ ...flightForm, toCode: e.target.value })}
+                    onChange={(e) => {
+                      const newTo = e.target.value;
+                      const matchingRoute = routes.find((r) => r.fromCode === flightForm.fromCode && r.toCode === newTo);
+                      let newArr = flightForm.arrivalTime;
+                      if (matchingRoute && flightForm.departureTime) {
+                        const [dh, dm] = flightForm.departureTime.split(':').map(Number);
+                        if (!isNaN(dh) && !isNaN(dm)) {
+                          const total = dh * 60 + dm + matchingRoute.flightTimeMinutes;
+                          newArr = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                        }
+                      }
+                      setFlightForm({ ...flightForm, toCode: newTo, arrivalTime: newArr });
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
                   >
-                    <option value="JER">JER (Jersey)</option>
-                    <option value="ACI">ACI (Alderney)</option>
-                    <option value="GCI">GCI (Guernsey)</option>
-                    <option value="BOH">BOH (Bournemouth)</option>
+                    {airports.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.code} - {a.name} ({a.islandOrCity})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

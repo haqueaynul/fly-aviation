@@ -31,6 +31,7 @@ interface FlightSearchCalendarProps {
   selectedFlight: RegularFlight | null;
   onSelectFlight: (flight: RegularFlight) => void;
   allSchedules: RegularFlight[];
+  airports?: Airport[];
   legLabel?: string; // e.g. 'Outbound' or 'Inbound'
   stepNumber?: number; // e.g. 1
   onDateChange?: (newDate: string) => void;
@@ -43,6 +44,7 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
   selectedFlight,
   onSelectFlight,
   allSchedules,
+  airports,
   legLabel = 'Outbound',
   stepNumber = 1,
   onDateChange,
@@ -60,12 +62,13 @@ export const FlightSearchCalendar: React.FC<FlightSearchCalendarProps> = ({
     setWindowBaseDate(departureDate);
   }, [departureDate]);
 
-  const originAirport = AIRPORTS.find((a) => a.code === origin) || {
+  const airportList = airports && airports.length > 0 ? airports : AIRPORTS;
+  const originAirport = airportList.find((a) => a.code === origin) || {
     code: origin,
     name: origin,
     islandOrCity: origin,
   };
-  const destinationAirport = AIRPORTS.find((a) => a.code === destination) || {
+  const destinationAirport = airportList.find((a) => a.code === destination) || {
     code: destination,
     name: destination,
     islandOrCity: destination,
