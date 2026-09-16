@@ -64,6 +64,24 @@ export const KNOWN_ACCOUNTS: {
     avatarColor: 'bg-purple-600',
   },
   {
+    email: 'sophie.lemaistre@flyeclipse.com',
+    password: 'AssistantPass2026!',
+    role: 'TENANT_ADMIN_ASSISTANT',
+    roleLabel: 'Assistant Admin (Ops)',
+    name: 'Sophie Le Maistre',
+    tenantId: 'FLYECLIPSE_CI',
+    avatarColor: 'bg-teal-600',
+  },
+  {
+    email: 'marcus.falla@flyeclipse.com',
+    password: 'AssistantPass2026!',
+    role: 'TENANT_ADMIN_ASSISTANT',
+    roleLabel: 'Assistant Admin (Pax)',
+    name: 'Marcus Falla',
+    tenantId: 'FLYECLIPSE_CI',
+    avatarColor: 'bg-teal-700',
+  },
+  {
     email: 'mail.aynul.haque@gmail.com',
     password: 'EclipsePass2026!',
     role: 'INDIVIDUAL_USER',
@@ -178,6 +196,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               : currentUser.companyName,
           corporateEmployees:
             matched.role === 'CORPORATE_USER' ? MOCK_CORPORATE_EMPLOYEES : currentUser.corporateEmployees,
+          tenantId: matched.tenantId || 'FLYECLIPSE_CI',
+          department: matched.role === 'TENANT_ADMIN_ASSISTANT' ? 'Flight Operations & Dispatch' : undefined,
+          permissions:
+            matched.role === 'TENANT_ADMIN_ASSISTANT'
+              ? {
+                  canUpdateFlightStatus: true,
+                  canBookFlights: true,
+                  canAddPassengers: true,
+                  canViewManifests: true,
+                  canViewFinancials: true,
+                }
+              : matched.role === 'TENANT_ADMIN'
+              ? {
+                  canUpdateFlightStatus: true,
+                  canBookFlights: true,
+                  canAddPassengers: true,
+                  canViewManifests: true,
+                  canViewFinancials: true,
+                }
+              : undefined,
           canBeLeadPassenger: matched.role === 'PASSENGER' || matched.role === 'CORPORATE_USER',
           isMfaEnabled: true,
           preferredMfaMethod: 'BIOMETRIC',

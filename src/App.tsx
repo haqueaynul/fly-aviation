@@ -10,6 +10,9 @@ import {
   MOCK_BOOKINGS,
   MOCK_AUDIT_LOGS,
   MOCK_CORPORATE_EMPLOYEES,
+  MOCK_TENANTS,
+  MOCK_ASSISTANT_ADMINS,
+  INITIAL_TICKETS,
 } from './data/mockData';
 import {
   Airport,
@@ -24,6 +27,8 @@ import {
   AuditLog,
   MfaMethod,
   CorporateEmployee,
+  AssistantAdminUser,
+  TenantInfo,
 } from './types';
 import { BookingEngine } from './components/BookingEngine';
 import { PassengerVerification } from './components/PassengerVerification';
@@ -37,6 +42,7 @@ import { ProfileWizardModal } from './components/ProfileWizardModal';
 import { MfaModal } from './components/MfaModal';
 import { LoginModal } from './components/LoginModal';
 import { BoardingPassModal } from './components/BoardingPassModal';
+import { TenantAdminDashboard } from './components/TenantAdminDashboard';
 import {
   Plane,
   Calendar,
@@ -60,7 +66,7 @@ import {
 export default function App() {
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<
-    'BOOKING' | 'PASSENGER' | 'CORPORATE' | 'ENTITIES' | 'SCHEDULES' | 'MAINTENANCE' | 'CREW' | 'AUDIT_LOGS'
+    'BOOKING' | 'PASSENGER' | 'CORPORATE' | 'ENTITIES' | 'SCHEDULES' | 'MAINTENANCE' | 'CREW' | 'AUDIT_LOGS' | 'TENANT_ADMIN'
   >('BOOKING');
 
   // Application State
@@ -68,6 +74,8 @@ export default function App() {
   const [corporateEmployees, setCorporateEmployees] = useState<CorporateEmployee[]>(
     currentUser.corporateEmployees?.length ? currentUser.corporateEmployees : MOCK_CORPORATE_EMPLOYEES
   );
+  const [tenants, setTenants] = useState<TenantInfo[]>(MOCK_TENANTS);
+  const [assistantAdmins, setAssistantAdmins] = useState<AssistantAdminUser[]>(MOCK_ASSISTANT_ADMINS);
   const [airports, setAirports] = useState<Airport[]>(MOCK_AIRPORTS);
   const [routes, setRoutes] = useState<Route[]>(MOCK_ROUTES);
   const [schedules, setSchedules] = useState<RegularFlight[]>(MOCK_SCHEDULES);
@@ -75,30 +83,7 @@ export default function App() {
   const [crew, setCrew] = useState<PilotCrew[]>(MOCK_CREW);
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>(MOCK_MAINTENANCE_LOGS);
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const [tickets, setTickets] = useState<Ticket[]>([
-    {
-      ticketNumber: 'TK-X9L4KP01',
-      bookingReference: 'FE-BK-8921',
-      pnr: 'X9L4KP',
-      passengerId: 'PAX-101',
-      passengerName: 'Jonathan Vance',
-      passengerType: 'ADULT',
-      flightNumber: 'FE-101',
-      origin: 'JER',
-      destination: 'ACI',
-      departureDate: '2026-09-14',
-      departureTime: '07:30',
-      gate: 'GATE 1',
-      seatNumber: '1A',
-      qrPayload: 'FLYECLIPSE:X9L4KP:UK98421092:1A',
-      barcodeNumber: '298104829104',
-      aircraftModel: 'Cessna 208B Grand Caravan EX',
-      baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-      hasPetAttached: true,
-      petName: 'Barnaby',
-      checkedIn: false,
-    },
-  ]);
+  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(MOCK_AUDIT_LOGS);
 
   // Modals state
@@ -170,19 +155,95 @@ export default function App() {
     showNotification(`Welcome back! MFA Verified via ${method.replace('_', ' ')}.`, 'success');
   };
 
-  // Update Flight Status (Dispatched by Admin)
-  const handleUpdateFlightStatus = (flightId: string, status: RegularFlight['status'], remark?: string) => {
+  // Update Flight Status (Dispatched by Tenant Admin / Assistant Admin)
+  const handleUpdateFlightStatus = (
+    flightId: string,
+    status: RegularFlight['status'],
+    remark?: string,
+    delayMinutes?: number,
+    delayReason?: string,
+    estimatedDepartureTime?: string
+  ) => {
     setSchedules((prev) =>
-      prev.map((f) => (f.id === flightId ? { ...f, status, statusRemark: remark } : f))
+      prev.map((f) =>
+        f.id === flightId
+          ? {
+              ...f,
+              status,
+              statusRemark: remark,
+              delayMinutes: status === 'DELAYED' ? delayMinutes : undefined,
+              delayReason: status === 'DELAYED' ? delayReason : undefined,
+              estimatedDepartureTime:
+                status === 'DELAYED' ? estimatedDepartureTime : undefined,
+            }
+          : f
+      )
     );
     const flight = schedules.find((f) => f.id === flightId);
     handleLogEvent(
       'FLIGHT_SCHEDULE_UPDATED',
-      `Flight ${flight?.flightNumber || flightId} status set to ${status}. Passenger broadcast dispatched.`,
+      `Flight ${flight?.flightNumber || flightId} status set to ${status}${
+        delayMinutes ? ` (+${delayMinutes}m delay: ${delayReason})` : ''
+      }. Broadcast dispatched to passenger manifests.`,
       flightId
     );
     showNotification(
-      `Flight ${flight?.flightNumber} status updated to ${status}. WebSocket alert sent to passengers.`,
+      `Flight ${flight?.flightNumber} marked as ${status}${
+        delayMinutes ? ` (ETD: ${estimatedDepartureTime})` : ''
+      }.`,
+      'success'
+    );
+  };
+
+  // Assistant Admin Handlers
+  const handleAddAssistantAdmin = (newAssistant: AssistantAdminUser) => {
+    setAssistantAdmins((prev) => [newAssistant, ...prev]);
+    handleLogEvent(
+      'ENTITY_CRUD',
+      `Assistant Admin user created: ${newAssistant.firstName} ${newAssistant.lastName} (${newAssistant.email}) for tenant ${newAssistant.tenantId}`,
+      newAssistant.id
+    );
+    showNotification(
+      `Assistant Admin ${newAssistant.firstName} ${newAssistant.lastName} added to ${newAssistant.tenantId}.`,
+      'success'
+    );
+  };
+
+  const handleToggleAssistantStatus = (id: string) => {
+    setAssistantAdmins((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? { ...a, status: a.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }
+          : a
+      )
+    );
+    showNotification('Assistant Admin account status updated.', 'info');
+  };
+
+  const handleLoginAsAssistant = (assistant: AssistantAdminUser) => {
+    const assistantProfile: UserProfile = {
+      ...currentUser,
+      id: assistant.id,
+      email: assistant.email,
+      firstName: assistant.firstName,
+      lastName: assistant.lastName,
+      role: 'TENANT_ADMIN_ASSISTANT',
+      tenantId: assistant.tenantId,
+      department: assistant.department,
+      permissions: assistant.permissions,
+      isMfaEnabled: true,
+      preferredMfaMethod: 'BIOMETRIC',
+    };
+    setCurrentUser(assistantProfile);
+    setIsAuthenticated(true);
+    setActiveTab('TENANT_ADMIN');
+    handleLogEvent(
+      'SIGNIN',
+      `Logged in as Assistant Admin: ${assistant.firstName} ${assistant.lastName} (${assistant.email}) on tenant ${assistant.tenantId}`,
+      assistant.id
+    );
+    showNotification(
+      `Logged in as Assistant Admin: ${assistant.firstName} ${assistant.lastName}. All permissions active!`,
       'success'
     );
   };
@@ -350,6 +411,8 @@ export default function App() {
                     }));
                     if (newRole === 'CORPORATE_USER' || newRole === 'CORPORATE_USER_ASSISTANT') {
                       setActiveTab('CORPORATE');
+                    } else if (newRole === 'TENANT_ADMIN' || newRole === 'TENANT_ADMIN_ASSISTANT') {
+                      setActiveTab('TENANT_ADMIN');
                     }
                     handleLogEvent('ENTITY_CRUD', `Active security role changed to ${newRole}`);
                     showNotification(`Switched role to ${newRole.replace(/_/g, ' ')}`, 'info');
@@ -357,7 +420,8 @@ export default function App() {
                   className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs"
                 >
                   <option value="SUPER_ADMIN">Super Admin</option>
-                  <option value="TENANT_ADMIN">Tenant Admin</option>
+                  <option value="TENANT_ADMIN">Tenant Admin (Ops & Dispatch)</option>
+                  <option value="TENANT_ADMIN_ASSISTANT">Assistant Admin (Delegated)</option>
                   <option value="INDIVIDUAL_USER">Individual User</option>
                   <option value="FAMILY_USER">Family Tier</option>
                   <option value="CORPORATE_USER">Corporate User (Travel Manager)</option>
@@ -422,6 +486,15 @@ export default function App() {
           <div className="flex space-x-1 overflow-x-auto border-t border-slate-100 pt-1 text-xs font-bold">
             {[
               { id: 'BOOKING', label: 'Book Flight & Cabin', icon: Plane },
+              {
+                id: 'TENANT_ADMIN',
+                label: 'Tenant Admin Hub',
+                icon: Shield,
+                badge:
+                  currentUser.role === 'TENANT_ADMIN' || currentUser.role === 'TENANT_ADMIN_ASSISTANT'
+                    ? 'Admin Hub'
+                    : undefined,
+              },
               { id: 'PASSENGER', label: 'Passenger Verification', icon: TicketIcon },
               {
                 id: 'CORPORATE',
@@ -466,6 +539,25 @@ export default function App() {
 
       {/* Main App Content View */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'TENANT_ADMIN' && (
+          <TenantAdminDashboard
+            schedules={schedules}
+            bookings={bookings}
+            tickets={tickets}
+            currentUser={currentUser}
+            corporateEmployees={corporateEmployees}
+            tenants={tenants}
+            assistantAdmins={assistantAdmins}
+            onUpdateFlightStatus={handleUpdateFlightStatus}
+            onBookingConfirmed={handleBookingConfirmed}
+            onAddAssistantAdmin={handleAddAssistantAdmin}
+            onToggleAssistantStatus={handleToggleAssistantStatus}
+            onLoginAsAssistant={handleLoginAsAssistant}
+            onNavigateToBooking={() => setActiveTab('BOOKING')}
+            onLogEvent={handleLogEvent}
+          />
+        )}
+
         {activeTab === 'CORPORATE' && (
           <CorporatePortal
             employees={corporateEmployees}

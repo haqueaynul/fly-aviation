@@ -81,6 +81,9 @@ export interface RegularFlight {
   copilotId?: string;
   status: FlightStatus;
   statusRemark?: string;
+  delayMinutes?: number;
+  delayReason?: string;
+  estimatedDepartureTime?: string;
   date: string; // 'YYYY-MM-DD'
   availableSeatsCount: number;
   bookedSeats: string[]; // seatIds on 2h hold
@@ -94,6 +97,43 @@ export interface RegularFlight {
   totalTravelTime?: string; // '1h 45m'
   sectorsCount?: number; // 2
   legs?: FlightLegSegment[];
+}
+
+export interface AssistantAdminPermissions {
+  canUpdateFlightStatus: boolean;
+  canBookFlights: boolean;
+  canAddPassengers: boolean;
+  canViewManifests: boolean;
+  canViewFinancials: boolean;
+}
+
+export interface AssistantAdminUser {
+  id: string;
+  tenantId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password?: string;
+  phone: string;
+  department: string;
+  role: 'TENANT_ADMIN_ASSISTANT';
+  status: 'ACTIVE' | 'SUSPENDED';
+  createdAt: string;
+  lastLogin?: string;
+  avatarColor?: string;
+  permissions: AssistantAdminPermissions;
+}
+
+export interface TenantInfo {
+  id: string;
+  name: string;
+  code: string;
+  baseAirport: string;
+  currency: string;
+  contactEmail: string;
+  supportPhone: string;
+  status: 'ACTIVE' | 'MAINTENANCE';
+  allowedAirports: string[];
 }
 
 export interface SeatInfo {
@@ -198,6 +238,9 @@ export interface UserProfile {
   isLeadPassenger?: boolean;
   canBeLeadPassenger?: boolean;
   employeeId?: string;
+  tenantId?: string;
+  department?: string;
+  permissions?: AssistantAdminPermissions;
   isMfaEnabled: boolean;
   preferredMfaMethod: MfaMethod;
   profileCompletePercentage: number;
