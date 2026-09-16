@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Booking, Ticket } from '../types';
-import { Search, Plane, Calendar, Clock, CheckCircle2, AlertTriangle, ShieldCheck, Ticket as TicketIcon, Dog, User, Download } from 'lucide-react';
+import { Search, Plane, Calendar, Clock, CheckCircle2, AlertTriangle, ShieldCheck, Ticket as TicketIcon, Dog, User, Download, Crown, Building2 } from 'lucide-react';
 import { BoardingPassModal } from './BoardingPassModal';
 import { downloadBoardingPassPDF } from '../utils/pdfGenerator';
 
@@ -15,7 +15,7 @@ export const PassengerVerification: React.FC<PassengerVerificationProps> = ({
   tickets,
   onOpenTicket,
 }) => {
-  const [searchType, setSearchType] = useState<'TICKET_NUM' | 'PNR' | 'PHONE' | 'PASSPORT'>('PNR');
+  const [searchType, setSearchType] = useState<'TICKET_NUM' | 'PNR' | 'PHONE' | 'PASSPORT' | 'EMAIL'>('PNR');
   const [query, setQuery] = useState('X9L4KP');
   const [searchResult, setSearchResult] = useState<{ booking: Booking; ticket: Ticket } | null>(null);
   const [searched, setSearched] = useState(false);
@@ -38,6 +38,22 @@ export const PassengerVerification: React.FC<PassengerVerificationProps> = ({
         const ticket = tickets.find((t) => t.pnr === b.pnr) || generateMockTicket(b);
         setSearchResult({ booking: b, ticket });
         return;
+      }
+
+      // Search by Email
+      if (searchType === 'EMAIL') {
+        const lowerQuery = query.trim().toLowerCase();
+        const matchesLead = b.leadPassengerEmail && b.leadPassengerEmail.toLowerCase() === lowerQuery;
+        const matchesPax = b.passengers.some((p) => p.email && p.email.toLowerCase() === lowerQuery);
+        if (matchesLead || matchesPax) {
+          const ticket =
+            tickets.find((t) => t.pnr === b.pnr && t.passengerEmail?.toLowerCase() === lowerQuery) ||
+            tickets.find((t) => t.pnr === b.pnr && t.isLeadPassenger) ||
+            tickets.find((t) => t.pnr === b.pnr) ||
+            generateMockTicket(b);
+          setSearchResult({ booking: b, ticket });
+          return;
+        }
       }
 
       // Search by Phone
@@ -123,6 +139,7 @@ export const PassengerVerification: React.FC<PassengerVerificationProps> = ({
         <div className="flex flex-wrap gap-2 mt-6">
           {[
             { id: 'PNR', label: 'Booking PNR / Ref' },
+            { id: 'EMAIL', label: 'Lead / Pax Email' },
             { id: 'TICKET_NUM', label: 'Ticket Number (TK-)' },
             { id: 'PHONE', label: 'Mobile Phone' },
             { id: 'PASSPORT', label: 'Passport Number' },
@@ -154,6 +171,8 @@ export const PassengerVerification: React.FC<PassengerVerificationProps> = ({
               placeholder={
                 searchType === 'PNR'
                   ? 'Enter 6-char PNR (e.g. X9L4KP or FE-BK-8921)'
+                  : searchType === 'EMAIL'
+                  ? 'Enter Passenger or Lead Email (e.g. rachel.carter@apexci.je)'
                   : searchType === 'TICKET_NUM'
                   ? 'Enter Ticket (e.g. TK-X9L4KP01)'
                   : searchType === 'PHONE'
@@ -217,6 +236,38 @@ export const PassengerVerification: React.FC<PassengerVerificationProps> = ({
                 </div>
               </div>
 
+              {/* Corporate and Lead Passenger Information if applicable */}
+              {(searchResult.booking.isCorporateBooking || searchResult.booking.leadPassengerEmail) && (
+                <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-[#6d3cc7] text-white flex items-center justify-center font-bold">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">
+                        {searchResult.booking.corporateCompanyName || 'Corporate Charter Account'}
+                      </span>
+                      <span className="text-[11px] text-purple-700">
+                        Corporate Booking • Priority Handling
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-amber-100 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-xl font-semibold">
+                    <Crown className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wider text-amber-800 font-bold leading-none">
+                        Lead Passenger & Trip Coordinator
+                      </span>
+                      <span className="text-xs font-bold leading-tight">
+                        {searchResult.booking.leadPassengerName}{' '}
+                        {searchResult.booking.leadPassengerEmail ? `(${searchResult.booking.leadPassengerEmail})` : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Status and Route grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
                 <div>
@@ -249,29 +300,70 @@ export const PassengerVerification: React.FC<PassengerVerificationProps> = ({
                   Passengers & Pet Manifest
                 </h4>
                 <div className="space-y-2">
-                  {searchResult.booking.passengers.map((p, idx) => (
-                    <div
-                      key={p.id || idx}
-                      className="p-3 rounded-xl bg-white border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-50 text-[#6d3cc7] flex items-center justify-center font-bold">
-                          {p.firstName[0]}
+                  {searchResult.booking.passengers.map((p, idx) => {
+                    const isLead =
+                      p.isLeadPassenger ||
+                      (searchResult.booking.leadPassengerEmail &&
+                        p.email?.toLowerCase() === searchResult.booking.leadPassengerEmail.toLowerCase()) ||
+                      (p.firstName + ' ' + p.lastName).toLowerCase() === searchResult.booking.leadPassengerName.toLowerCase();
+                    const paxTicket =
+                      tickets.find(
+                        (t) =>
+                          t.pnr === searchResult.booking.pnr &&
+                          (t.passengerName.toLowerCase() === `${p.firstName} ${p.lastName}`.toLowerCase() ||
+                            (p.email && t.passengerEmail?.toLowerCase() === p.email.toLowerCase()))
+                      ) || searchResult.ticket;
+
+                    return (
+                      <div
+                        key={p.id || idx}
+                        className={`p-3 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
+                          isLead ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                              isLead ? 'bg-amber-200 text-amber-900' : 'bg-purple-50 text-[#6d3cc7]'
+                            }`}
+                          >
+                            {isLead ? <Crown className="w-4 h-4 text-amber-700" /> : p.firstName[0]}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-800 text-sm">
+                                {p.firstName} {p.lastName}
+                              </span>
+                              {isLead && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                  <Crown className="w-3 h-3 text-amber-600" /> Lead Passenger
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-slate-500">
+                              Passport: {p.passportNumber} • Seat {p.seatId || searchResult.booking.seatIds[idx] || '1A'}
+                              {p.email && ` • ${p.email}`}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-bold text-slate-800 block text-sm">
-                            {p.firstName} {p.lastName}
+
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
+                            {p.type}
                           </span>
-                          <span className="text-slate-500">
-                            Passport: {p.passportNumber} • Seat {p.seatId || searchResult.booking.seatIds[idx] || '1A'}
-                          </span>
+                          {paxTicket && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTicketForModal({ booking: searchResult.booking, ticket: paxTicket })}
+                              className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-[11px] flex items-center gap-1 transition-all"
+                            >
+                              <TicketIcon className="w-3 h-3" /> Pass
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
-                        {p.type}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Pets */}
                   {searchResult.booking.pets.map((pet, idx) => (

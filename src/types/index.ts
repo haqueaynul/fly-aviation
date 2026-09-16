@@ -129,6 +129,27 @@ export interface PassengerInfo {
   email: string;
   seatId?: string;
   petDetails?: PetInfo;
+  isLeadPassenger?: boolean;
+  employeeId?: string;
+  companyName?: string;
+}
+
+export interface CorporateEmployee {
+  id: string; // 'EMP-101'
+  companyName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  jobTitle: string;
+  department: string;
+  passportNumber: string;
+  passportCountry: string;
+  dob: string;
+  canBeLeadPassenger: boolean;
+  status: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE';
+  frequentFlyerNumber?: string;
+  emergencyContact?: string;
 }
 
 export interface RelativeProfile {
@@ -161,6 +182,7 @@ export interface UserProfile {
   photoUrl?: string;
   mapCoordinates?: { lat: number; lng: number };
   passportNumber?: string;
+  passportCountry?: string;
   passportExpiry?: string;
   passportImageUploaded?: boolean;
   drivingLicenseNumber?: string;
@@ -170,6 +192,12 @@ export interface UserProfile {
   savedRelatives: RelativeProfile[];
   companyName?: string;
   companyVatNumber?: string;
+  jobTitle?: string;
+  corporateEmployees?: CorporateEmployee[];
+  corporateEmployeeId?: string;
+  isLeadPassenger?: boolean;
+  canBeLeadPassenger?: boolean;
+  employeeId?: string;
   isMfaEnabled: boolean;
   preferredMfaMethod: MfaMethod;
   profileCompletePercentage: number;
@@ -219,6 +247,11 @@ export interface Booking {
   holdExpiresAt: number; // 2 hours from booking creation timestamp
   stripePaymentIntentId?: string;
   leadPassengerName: string;
+  leadPassengerEmail?: string;
+  leadPassengerId?: string;
+  isCorporateBooking?: boolean;
+  corporateCompanyName?: string;
+  corporateBookerEmail?: string;
   isCharter: boolean;
   refundAmount?: number;
   refundStrategyApplied?: string;
@@ -246,6 +279,10 @@ export interface Ticket {
   petName?: string;
   checkedIn: boolean;
   legType?: 'OUTBOUND' | 'RETURN' | 'INBOUND';
+  isLeadPassenger?: boolean;
+  passengerEmail?: string;
+  employeeId?: string;
+  companyName?: string;
   // Connecting flight details
   isConnecting?: boolean;
   viaCode?: string; // 'ACI'

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile, UserRole, MfaMethod } from '../types';
+import { MOCK_CORPORATE_EMPLOYEES } from '../data/mockData';
 import {
   ShieldCheck,
   Mail,
@@ -36,6 +37,24 @@ export const KNOWN_ACCOUNTS: {
   avatarColor: string;
 }[] = [
   {
+    email: 'corporate@apexci.je',
+    password: 'ApexCorporate2026!',
+    role: 'CORPORATE_USER',
+    roleLabel: 'Corporate Travel Admin',
+    name: 'Eleanor Vance',
+    tenantId: 'FLYECLIPSE_CI',
+    avatarColor: 'bg-emerald-600',
+  },
+  {
+    email: 'rachel.carter@apexci.je',
+    password: 'LeadPax2026!',
+    role: 'PASSENGER',
+    roleLabel: 'Designated Lead Passenger',
+    name: 'Rachel Carter',
+    tenantId: 'FLYECLIPSE_CI',
+    avatarColor: 'bg-amber-600',
+  },
+  {
     email: 'admin@flyeclipse.com',
     password: 'EclipseAdmin2026!',
     role: 'TENANT_ADMIN',
@@ -43,6 +62,15 @@ export const KNOWN_ACCOUNTS: {
     name: 'Harrison Sterling',
     tenantId: 'FLYECLIPSE_CI',
     avatarColor: 'bg-purple-600',
+  },
+  {
+    email: 'mail.aynul.haque@gmail.com',
+    password: 'EclipsePass2026!',
+    role: 'INDIVIDUAL_USER',
+    roleLabel: 'Frequent Passenger',
+    name: 'Aynul Haque',
+    tenantId: 'FLYECLIPSE_CI',
+    avatarColor: 'bg-indigo-600',
   },
   {
     email: 'dispatch@flyeclipse.com',
@@ -70,15 +98,6 @@ export const KNOWN_ACCOUNTS: {
     name: 'David Le Page',
     tenantId: 'FLYECLIPSE_CI',
     avatarColor: 'bg-emerald-600',
-  },
-  {
-    email: 'mail.aynul.haque@gmail.com',
-    password: 'EclipsePass2026!',
-    role: 'INDIVIDUAL_USER',
-    roleLabel: 'Frequent Passenger',
-    name: 'Aynul Haque',
-    tenantId: 'FLYECLIPSE_CI',
-    avatarColor: 'bg-indigo-600',
   },
 ];
 
@@ -153,6 +172,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           firstName: nameParts[0] || 'User',
           lastName: nameParts.slice(1).join(' ') || 'Admin',
           surname: nameParts.slice(1).join(' ') || 'Admin',
+          companyName:
+            matched.role === 'CORPORATE_USER' || matched.email.includes('apexci.je')
+              ? 'Apex Capital Partners CI'
+              : currentUser.companyName,
+          corporateEmployees:
+            matched.role === 'CORPORATE_USER' ? MOCK_CORPORATE_EMPLOYEES : currentUser.corporateEmployees,
+          canBeLeadPassenger: matched.role === 'PASSENGER' || matched.role === 'CORPORATE_USER',
           isMfaEnabled: true,
           preferredMfaMethod: 'BIOMETRIC',
         };

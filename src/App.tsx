@@ -9,6 +9,7 @@ import {
   MOCK_USER,
   MOCK_BOOKINGS,
   MOCK_AUDIT_LOGS,
+  MOCK_CORPORATE_EMPLOYEES,
 } from './data/mockData';
 import {
   Airport,
@@ -22,9 +23,11 @@ import {
   Ticket,
   AuditLog,
   MfaMethod,
+  CorporateEmployee,
 } from './types';
 import { BookingEngine } from './components/BookingEngine';
 import { PassengerVerification } from './components/PassengerVerification';
+import { CorporatePortal } from './components/CorporatePortal';
 import { FlightScheduleManager } from './components/FlightScheduleManager';
 import { MaintenanceDashboard } from './components/MaintenanceDashboard';
 import { CrewRosterDashboard } from './components/CrewRosterDashboard';
@@ -51,16 +54,20 @@ import {
   User,
   Sparkles,
   ChevronDown,
+  Building2,
 } from 'lucide-react';
 
 export default function App() {
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<
-    'BOOKING' | 'PASSENGER' | 'ENTITIES' | 'SCHEDULES' | 'MAINTENANCE' | 'CREW' | 'AUDIT_LOGS'
+    'BOOKING' | 'PASSENGER' | 'CORPORATE' | 'ENTITIES' | 'SCHEDULES' | 'MAINTENANCE' | 'CREW' | 'AUDIT_LOGS'
   >('BOOKING');
 
   // Application State
   const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USER);
+  const [corporateEmployees, setCorporateEmployees] = useState<CorporateEmployee[]>(
+    currentUser.corporateEmployees?.length ? currentUser.corporateEmployees : MOCK_CORPORATE_EMPLOYEES
+  );
   const [airports, setAirports] = useState<Airport[]>(MOCK_AIRPORTS);
   const [routes, setRoutes] = useState<Route[]>(MOCK_ROUTES);
   const [schedules, setSchedules] = useState<RegularFlight[]>(MOCK_SCHEDULES);
@@ -329,7 +336,21 @@ export default function App() {
                   value={currentUser.role}
                   onChange={(e) => {
                     const newRole = e.target.value as any;
-                    setCurrentUser((u) => ({ ...u, role: newRole }));
+                    setCurrentUser((u) => ({
+                      ...u,
+                      role: newRole,
+                      companyName:
+                        newRole === 'CORPORATE_USER' || newRole === 'CORPORATE_USER_ASSISTANT'
+                          ? u.companyName || 'Apex Capital Partners CI'
+                          : u.companyName,
+                      corporateEmployees:
+                        newRole === 'CORPORATE_USER' || newRole === 'CORPORATE_USER_ASSISTANT'
+                          ? corporateEmployees
+                          : u.corporateEmployees,
+                    }));
+                    if (newRole === 'CORPORATE_USER' || newRole === 'CORPORATE_USER_ASSISTANT') {
+                      setActiveTab('CORPORATE');
+                    }
                     handleLogEvent('ENTITY_CRUD', `Active security role changed to ${newRole}`);
                     showNotification(`Switched role to ${newRole.replace(/_/g, ' ')}`, 'info');
                   }}
@@ -339,7 +360,8 @@ export default function App() {
                   <option value="TENANT_ADMIN">Tenant Admin</option>
                   <option value="INDIVIDUAL_USER">Individual User</option>
                   <option value="FAMILY_USER">Family Tier</option>
-                  <option value="CORPORATE_USER">Corporate Charter</option>
+                  <option value="CORPORATE_USER">Corporate User (Travel Manager)</option>
+                  <option value="CORPORATE_USER_ASSISTANT">Corporate Assistant</option>
                   <option value="PASSENGER">Passenger</option>
                 </select>
               </div>
@@ -401,6 +423,15 @@ export default function App() {
             {[
               { id: 'BOOKING', label: 'Book Flight & Cabin', icon: Plane },
               { id: 'PASSENGER', label: 'Passenger Verification', icon: TicketIcon },
+              {
+                id: 'CORPORATE',
+                label: 'Corporate Team & Bookings',
+                icon: Building2,
+                badge:
+                  currentUser.role === 'CORPORATE_USER' || currentUser.role === 'CORPORATE_USER_ASSISTANT'
+                    ? 'Corporate'
+                    : undefined,
+              },
               { id: 'SCHEDULES', label: 'Flight Timetable', icon: Calendar },
               { id: 'MAINTENANCE', label: 'Cessna Fleet & Maintenance', icon: Wrench },
               { id: 'CREW', label: 'Flight Crew Roster', icon: Users },
@@ -421,6 +452,11 @@ export default function App() {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span className="text-[10px] bg-purple-100 text-[#6d3cc7] font-bold px-1.5 py-0.5 rounded-full border border-purple-200">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -430,6 +466,63 @@ export default function App() {
 
       {/* Main App Content View */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'CORPORATE' && (
+          <CorporatePortal
+            employees={corporateEmployees}
+            onUpdateEmployees={(newEmps) => {
+              setCorporateEmployees(newEmps);
+              setCurrentUser((prev) => ({ ...prev, corporateEmployees: newEmps }));
+              handleLogEvent('ENTITY_CRUD', `Updated corporate employee roster (${newEmps.length} active employees).`);
+            }}
+            bookings={bookings}
+            tickets={tickets}
+            schedules={schedules}
+            currentUser={currentUser}
+            onNavigateToBooking={(preselectedEmployeeIds) => {
+              setActiveTab('BOOKING');
+              if (preselectedEmployeeIds && preselectedEmployeeIds.length > 0) {
+                showNotification(`Switched to Booking Engine with ${preselectedEmployeeIds.length} employee(s) ready for booking.`, 'info');
+              }
+            }}
+            onOpenTicket={(ticket, booking) => setActiveTicketForModal({ booking, ticket })}
+            onLoginAsEmployee={(emp) => {
+              const employeeUser: UserProfile = {
+                id: emp.id,
+                email: emp.email,
+                firstName: emp.firstName,
+                lastName: emp.lastName,
+                role: 'PASSENGER',
+                dob: emp.dob,
+                mobile: emp.phone,
+                passportNumber: emp.passportNumber,
+                passportCountry: emp.passportCountry,
+                isMfaEnabled: true,
+                preferredMfaMethod: 'SMS_OTP',
+                profileCompletePercentage: 100,
+                savedRelatives: [],
+                skippedSteps: [],
+                companyName: emp.companyName,
+                jobTitle: emp.jobTitle,
+                corporateEmployeeId: emp.id,
+                canBeLeadPassenger: emp.canBeLeadPassenger,
+              };
+              setCurrentUser(employeeUser);
+              setIsAuthenticated(true);
+              setActiveTab('PASSENGER');
+              handleLogEvent(
+                'SIGNIN',
+                `Logged in as Lead Passenger: ${emp.firstName} ${emp.lastName} (${emp.email}) - Accessing live flight status.`,
+                emp.id
+              );
+              showNotification(
+                `Logged in as Lead Passenger: ${emp.firstName} ${emp.lastName} (${emp.jobTitle}). Checking flight status & boarding passes!`,
+                'success'
+              );
+            }}
+            onLogEvent={handleLogEvent}
+          />
+        )}
+
         {activeTab === 'ENTITIES' && (
           <EntityManagement
             airports={airports}
@@ -459,6 +552,7 @@ export default function App() {
             routes={routes}
             schedules={schedules}
             currentUser={currentUser}
+            corporateEmployees={corporateEmployees}
             onBookingConfirmed={handleBookingConfirmed}
             onLogEvent={handleLogEvent}
           />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RegularFlight, Airport, Route, SeatInfo, PassengerInfo, PetInfo, Booking, Ticket, UserProfile } from '../types';
+import { RegularFlight, Airport, Route, SeatInfo, PassengerInfo, PetInfo, Booking, Ticket, UserProfile, CorporateEmployee } from '../types';
 import { AIRPORTS, CESSNA_SEATS } from '../data/mockData';
 import { calculateFare } from '../utils/pricing';
 import { CessnaSeatMap } from './CessnaSeatMap';
@@ -29,6 +29,9 @@ import {
   Copy,
   RotateCcw,
   Search,
+  Building2,
+  Crown,
+  UserCheck,
 } from 'lucide-react';
 
 interface BookingEngineProps {
@@ -36,6 +39,7 @@ interface BookingEngineProps {
   currentUser: UserProfile;
   airports?: Airport[];
   routes?: Route[];
+  corporateEmployees?: CorporateEmployee[];
   onBookingConfirmed: (newBooking: Booking, newTickets: Ticket | Ticket[]) => void;
   onLogEvent: (eventType: any, details: string, entityId?: string) => void;
 }
@@ -45,6 +49,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
   currentUser,
   airports,
   routes,
+  corporateEmployees = [],
   onBookingConfirmed,
   onLogEvent,
 }) => {
@@ -124,6 +129,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
   const grandTotal = baseTotal + petTotal;
 
   // Stripe & Hold State
+  const [leadPassengerIndex, setLeadPassengerIndex] = useState<number>(0);
   const [holdTimerSeconds, setHoldTimerSeconds] = useState<number>(7200); // 2 hours
   const [isProcessingStripe, setIsProcessingStripe] = useState<boolean>(false);
   const [saveCardForFuture, setSaveCardForFuture] = useState<boolean>(true);
@@ -254,6 +260,16 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
     const refNum = 'FE-BK-' + Math.floor(1000 + Math.random() * 9000);
     const pnrCode = 'ECL' + Math.floor(100 + Math.random() * 900);
 
+    const leadPax = passengers[leadPassengerIndex] || passengers[0];
+    const isCorp = currentUser.role === 'CORPORATE_USER' || Boolean(currentUser.companyName) || passengers.some((p) => Boolean(p.employeeId));
+
+    const enrichedPassengers = passengers.map((p, idx) => ({
+      ...p,
+      seatId: selectedSeatIds[idx] || p.seatId || '1A',
+      isLeadPassenger: idx === leadPassengerIndex,
+      companyName: p.companyName || currentUser.companyName,
+    }));
+
     const booking: Booking = {
       id: 'BK-' + Date.now(),
       referenceNumber: refNum,
@@ -285,7 +301,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
       returnLegs: selectedReturnFlight?.legs,
       userId: currentUser.id,
       userEmail: currentUser.email,
-      passengers,
+      passengers: enrichedPassengers,
       pets: hasPetsTravelling ? pets : [],
       seatIds: selectedSeatIds,
       totalFare: grandTotal,
@@ -294,7 +310,12 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
       paymentStatus: 'PENDING',
       bookingCreatedAt: new Date().toISOString(),
       holdExpiresAt: Date.now() + 7200000, // 2 hours
-      leadPassengerName: `${passengers[0].firstName} ${passengers[0].lastName}`,
+      leadPassengerName: `${leadPax.firstName} ${leadPax.lastName}`,
+      leadPassengerEmail: leadPax.email,
+      leadPassengerId: leadPax.id,
+      isCorporateBooking: isCorp,
+      corporateCompanyName: currentUser.companyName || (isCorp ? 'Apex Capital Partners CI' : undefined),
+      corporateBookerEmail: currentUser.email,
       isCharter,
     };
 
@@ -306,7 +327,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
         selectedFlight.isConnecting ? ' (Connecting Via Alderney ACI)' : ''
       }${
         selectedReturnFlight ? ` and inbound flight ${selectedReturnFlight.flightNumber}` : ''
-      } under PNR ${pnrCode}`,
+      } under PNR ${pnrCode}. Lead Passenger: ${booking.leadPassengerName}`,
       booking.id
     );
   };
@@ -328,215 +349,240 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
 
       const generatedTickets: Ticket[] = [];
 
-      // Generate Outbound Tickets (Multi-leg if connecting)
-      if (selectedFlight.isConnecting && selectedFlight.legs && selectedFlight.legs.length >= 2) {
-        // Sector 1 Ticket (e.g., JER -> ACI)
-        const leg1 = selectedFlight.legs[0];
-        const leg2 = selectedFlight.legs[1];
+      // Generate tickets for EACH passenger on this booking
+      confirmedBooking.passengers.forEach((p, paxIdx) => {
+        const outboundSeat = confirmedBooking.seatIds[paxIdx] || p.seatId || '1A';
+        const isLead = Boolean(p.isLeadPassenger || paxIdx === leadPassengerIndex || p.email === confirmedBooking.leadPassengerEmail);
 
-        const outboundLeg1Ticket: Ticket = {
-          ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
-          bookingReference: confirmedBooking.referenceNumber,
-          pnr: confirmedBooking.pnr,
-          passengerId: confirmedBooking.passengers[0].id,
-          passengerName: confirmedBooking.leadPassengerName,
-          passengerType: confirmedBooking.passengers[0].type,
-          flightNumber: leg1.flightNumber,
-          origin: leg1.fromCode,
-          destination: leg1.toCode,
-          departureDate: confirmedBooking.departureDate,
-          departureTime: leg1.departureTime,
-          gate: 'GATE 1',
-          seatNumber: confirmedBooking.seatIds[0] || '1A',
-          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${leg1.flightNumber}:${leg1.fromCode}-${leg1.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
-          barcodeNumber: '298104829104',
-          aircraftModel: 'Cessna 208B Grand Caravan EX',
-          baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-          hasPetAttached: hasPetsTravelling && pets.length > 0,
-          petName: pets[0]?.name,
-          checkedIn: false,
-          legType: 'OUTBOUND',
-          isConnecting: true,
-          viaCode: 'ACI',
-          viaAirportName: 'Alderney Airport',
-          connectingLegIndex: 1,
-          totalConnectingLegs: 2,
-          finalDestination: confirmedBooking.toCode,
-          journeyOrigin: confirmedBooking.fromCode,
-          layoverDuration: selectedFlight.layoverDuration || '30 mins',
-          connectingFlightNumber: leg2.flightNumber,
-          connectingDepartureTime: leg2.departureTime,
-        };
+        if (selectedFlight.isConnecting && selectedFlight.legs && selectedFlight.legs.length >= 2) {
+          const leg1 = selectedFlight.legs[0];
+          const leg2 = selectedFlight.legs[1];
 
-        // Sector 2 Ticket (e.g., ACI -> BOH)
-        const outboundLeg2Ticket: Ticket = {
-          ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
-          bookingReference: confirmedBooking.referenceNumber,
-          pnr: confirmedBooking.pnr,
-          passengerId: confirmedBooking.passengers[0].id,
-          passengerName: confirmedBooking.leadPassengerName,
-          passengerType: confirmedBooking.passengers[0].type,
-          flightNumber: leg2.flightNumber,
-          origin: leg2.fromCode,
-          destination: leg2.toCode,
-          departureDate: confirmedBooking.departureDate,
-          departureTime: leg2.departureTime,
-          gate: 'GATE 2',
-          seatNumber: confirmedBooking.seatIds[0] || '1A',
-          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${leg2.flightNumber}:${leg2.fromCode}-${leg2.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
-          barcodeNumber: '298104829105',
-          aircraftModel: 'Cessna 208B Grand Caravan EX',
-          baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-          hasPetAttached: hasPetsTravelling && pets.length > 0,
-          petName: pets[0]?.name,
-          checkedIn: false,
-          legType: 'OUTBOUND',
-          isConnecting: true,
-          viaCode: 'ACI',
-          viaAirportName: 'Alderney Airport',
-          connectingLegIndex: 2,
-          totalConnectingLegs: 2,
-          finalDestination: confirmedBooking.toCode,
-          journeyOrigin: confirmedBooking.fromCode,
-          layoverDuration: selectedFlight.layoverDuration || '30 mins',
-          connectingFlightNumber: leg1.flightNumber,
-          connectingDepartureTime: leg1.departureTime,
-        };
-
-        generatedTickets.push(outboundLeg1Ticket, outboundLeg2Ticket);
-      } else {
-        // Direct Non-Stop Outbound
-        const outboundTicket: Ticket = {
-          ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
-          bookingReference: confirmedBooking.referenceNumber,
-          pnr: confirmedBooking.pnr,
-          passengerId: confirmedBooking.passengers[0].id,
-          passengerName: confirmedBooking.leadPassengerName,
-          passengerType: confirmedBooking.passengers[0].type,
-          flightNumber: confirmedBooking.flightNumber,
-          origin: confirmedBooking.fromCode,
-          destination: confirmedBooking.toCode,
-          departureDate: confirmedBooking.departureDate,
-          departureTime: confirmedBooking.departureTime,
-          gate: 'GATE 1',
-          seatNumber: confirmedBooking.seatIds[0] || '1A',
-          qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${confirmedBooking.passengers[0].passportNumber}:${confirmedBooking.seatIds[0]}`,
-          barcodeNumber: '298104829104',
-          aircraftModel: 'Cessna 208B Grand Caravan EX',
-          baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-          hasPetAttached: hasPetsTravelling && pets.length > 0,
-          petName: pets[0]?.name,
-          checkedIn: false,
-          legType: 'OUTBOUND',
-        };
-        generatedTickets.push(outboundTicket);
-      }
-
-      // Return tickets if round trip
-      if (confirmedBooking.isReturnTrip && selectedReturnFlight) {
-        if (selectedReturnFlight.isConnecting && selectedReturnFlight.legs && selectedReturnFlight.legs.length >= 2) {
-          const retLeg1 = selectedReturnFlight.legs[0];
-          const retLeg2 = selectedReturnFlight.legs[1];
-
-          // Return Leg 1 (e.g., BOH -> ACI)
-          const retLeg1Ticket: Ticket = {
+          // Outbound Sector 1 Ticket
+          generatedTickets.push({
             ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
             bookingReference: confirmedBooking.referenceNumber,
             pnr: confirmedBooking.pnr,
-            passengerId: confirmedBooking.passengers[0].id,
-            passengerName: confirmedBooking.leadPassengerName,
-            passengerType: confirmedBooking.passengers[0].type,
-            flightNumber: retLeg1.flightNumber,
-            origin: retLeg1.fromCode,
-            destination: retLeg1.toCode,
-            departureDate: confirmedBooking.returnDepartureDate || returnDate,
-            departureTime: retLeg1.departureTime,
+            passengerId: p.id,
+            passengerName: `${p.firstName} ${p.lastName}`,
+            passengerType: p.type,
+            flightNumber: leg1.flightNumber,
+            origin: leg1.fromCode,
+            destination: leg1.toCode,
+            departureDate: confirmedBooking.departureDate,
+            departureTime: leg1.departureTime,
             gate: 'GATE 1',
-            seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
-            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${retLeg1.flightNumber}:${retLeg1.fromCode}-${retLeg1.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
-            barcodeNumber: '381904829105',
+            seatNumber: outboundSeat,
+            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${leg1.flightNumber}:${leg1.fromCode}-${leg1.toCode}:${outboundSeat}`,
+            barcodeNumber: `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
             aircraftModel: 'Cessna 208B Grand Caravan EX',
             baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-            hasPetAttached: hasPetsTravelling && pets.length > 0,
+            hasPetAttached: hasPetsTravelling && pets.length > 0 && paxIdx === 0,
             petName: pets[0]?.name,
             checkedIn: false,
-            legType: 'INBOUND',
+            legType: 'OUTBOUND',
             isConnecting: true,
             viaCode: 'ACI',
             viaAirportName: 'Alderney Airport',
             connectingLegIndex: 1,
             totalConnectingLegs: 2,
-            finalDestination: confirmedBooking.fromCode,
-            journeyOrigin: confirmedBooking.toCode,
-            layoverDuration: selectedReturnFlight.layoverDuration || '45 mins',
-            connectingFlightNumber: retLeg2.flightNumber,
-            connectingDepartureTime: retLeg2.departureTime,
-          };
+            finalDestination: confirmedBooking.toCode,
+            journeyOrigin: confirmedBooking.fromCode,
+            layoverDuration: selectedFlight.layoverDuration || '30 mins',
+            connectingFlightNumber: leg2.flightNumber,
+            connectingDepartureTime: leg2.departureTime,
+            isLeadPassenger: isLead,
+            passengerEmail: p.email,
+            employeeId: p.employeeId,
+            companyName: confirmedBooking.corporateCompanyName,
+          });
 
-          // Return Leg 2 (e.g., ACI -> JER)
-          const retLeg2Ticket: Ticket = {
+          // Outbound Sector 2 Ticket
+          generatedTickets.push({
             ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
             bookingReference: confirmedBooking.referenceNumber,
             pnr: confirmedBooking.pnr,
-            passengerId: confirmedBooking.passengers[0].id,
-            passengerName: confirmedBooking.leadPassengerName,
-            passengerType: confirmedBooking.passengers[0].type,
-            flightNumber: retLeg2.flightNumber,
-            origin: retLeg2.fromCode,
-            destination: retLeg2.toCode,
-            departureDate: confirmedBooking.returnDepartureDate || returnDate,
-            departureTime: retLeg2.departureTime,
+            passengerId: p.id,
+            passengerName: `${p.firstName} ${p.lastName}`,
+            passengerType: p.type,
+            flightNumber: leg2.flightNumber,
+            origin: leg2.fromCode,
+            destination: leg2.toCode,
+            departureDate: confirmedBooking.departureDate,
+            departureTime: leg2.departureTime,
             gate: 'GATE 2',
-            seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
-            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${retLeg2.flightNumber}:${retLeg2.fromCode}-${retLeg2.toCode}:${confirmedBooking.seatIds[0] || '1A'}`,
-            barcodeNumber: '381904829106',
+            seatNumber: outboundSeat,
+            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${leg2.flightNumber}:${leg2.fromCode}-${leg2.toCode}:${outboundSeat}`,
+            barcodeNumber: `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
             aircraftModel: 'Cessna 208B Grand Caravan EX',
             baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-            hasPetAttached: hasPetsTravelling && pets.length > 0,
+            hasPetAttached: hasPetsTravelling && pets.length > 0 && paxIdx === 0,
             petName: pets[0]?.name,
             checkedIn: false,
-            legType: 'INBOUND',
+            legType: 'OUTBOUND',
             isConnecting: true,
             viaCode: 'ACI',
             viaAirportName: 'Alderney Airport',
             connectingLegIndex: 2,
             totalConnectingLegs: 2,
-            finalDestination: confirmedBooking.fromCode,
-            journeyOrigin: confirmedBooking.toCode,
-            layoverDuration: selectedReturnFlight.layoverDuration || '45 mins',
-            connectingFlightNumber: retLeg1.flightNumber,
-            connectingDepartureTime: retLeg1.departureTime,
-          };
-
-          generatedTickets.push(retLeg1Ticket, retLeg2Ticket);
+            finalDestination: confirmedBooking.toCode,
+            journeyOrigin: confirmedBooking.fromCode,
+            layoverDuration: selectedFlight.layoverDuration || '30 mins',
+            connectingFlightNumber: leg1.flightNumber,
+            connectingDepartureTime: leg1.departureTime,
+            isLeadPassenger: isLead,
+            passengerEmail: p.email,
+            employeeId: p.employeeId,
+            companyName: confirmedBooking.corporateCompanyName,
+          });
         } else {
-          // Direct Return Ticket
-          const returnTicket: Ticket = {
+          // Direct Outbound
+          generatedTickets.push({
             ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
             bookingReference: confirmedBooking.referenceNumber,
             pnr: confirmedBooking.pnr,
-            passengerId: confirmedBooking.passengers[0].id,
-            passengerName: confirmedBooking.leadPassengerName,
-            passengerType: confirmedBooking.passengers[0].type,
-            flightNumber: confirmedBooking.returnFlightNumber || selectedReturnFlight.flightNumber,
-            origin: confirmedBooking.toCode, // Origin is return origin
-            destination: confirmedBooking.fromCode,
-            departureDate: confirmedBooking.returnDepartureDate || returnDate,
-            departureTime: confirmedBooking.returnDepartureTime || selectedReturnFlight.departureTime,
-            gate: 'GATE 2',
-            seatNumber: (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || confirmedBooking.seatIds[0] || '1A',
-            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${confirmedBooking.passengers[0].passportNumber}:${(confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[0]) || '1A'}`,
-            barcodeNumber: '381904829105',
+            passengerId: p.id,
+            passengerName: `${p.firstName} ${p.lastName}`,
+            passengerType: p.type,
+            flightNumber: confirmedBooking.flightNumber,
+            origin: confirmedBooking.fromCode,
+            destination: confirmedBooking.toCode,
+            departureDate: confirmedBooking.departureDate,
+            departureTime: confirmedBooking.departureTime,
+            gate: 'GATE 1',
+            seatNumber: outboundSeat,
+            qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${p.passportNumber || 'UK984210'}:${outboundSeat}`,
+            barcodeNumber: `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
             aircraftModel: 'Cessna 208B Grand Caravan EX',
             baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
-            hasPetAttached: hasPetsTravelling && pets.length > 0,
+            hasPetAttached: hasPetsTravelling && pets.length > 0 && paxIdx === 0,
             petName: pets[0]?.name,
             checkedIn: false,
-            legType: 'INBOUND',
-          };
-          generatedTickets.push(returnTicket);
+            legType: 'OUTBOUND',
+            isLeadPassenger: isLead,
+            passengerEmail: p.email,
+            employeeId: p.employeeId,
+            companyName: confirmedBooking.corporateCompanyName,
+          });
         }
-      }
+
+        // Return Tickets if round trip
+        if (confirmedBooking.isReturnTrip && selectedReturnFlight) {
+          const returnSeat = (confirmedBooking.returnSeatIds && confirmedBooking.returnSeatIds[paxIdx]) || outboundSeat;
+
+          if (selectedReturnFlight.isConnecting && selectedReturnFlight.legs && selectedReturnFlight.legs.length >= 2) {
+            const retLeg1 = selectedReturnFlight.legs[0];
+            const retLeg2 = selectedReturnFlight.legs[1];
+
+            // Return Leg 1
+            generatedTickets.push({
+              ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+              bookingReference: confirmedBooking.referenceNumber,
+              pnr: confirmedBooking.pnr,
+              passengerId: p.id,
+              passengerName: `${p.firstName} ${p.lastName}`,
+              passengerType: p.type,
+              flightNumber: retLeg1.flightNumber,
+              origin: retLeg1.fromCode,
+              destination: retLeg1.toCode,
+              departureDate: confirmedBooking.returnDepartureDate || returnDate,
+              departureTime: retLeg1.departureTime,
+              gate: 'GATE 1',
+              seatNumber: returnSeat,
+              qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${retLeg1.flightNumber}:${retLeg1.fromCode}-${retLeg1.toCode}:${returnSeat}`,
+              barcodeNumber: `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
+              aircraftModel: 'Cessna 208B Grand Caravan EX',
+              baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+              hasPetAttached: hasPetsTravelling && pets.length > 0 && paxIdx === 0,
+              petName: pets[0]?.name,
+              checkedIn: false,
+              legType: 'INBOUND',
+              isConnecting: true,
+              viaCode: 'ACI',
+              viaAirportName: 'Alderney Airport',
+              connectingLegIndex: 1,
+              totalConnectingLegs: 2,
+              finalDestination: confirmedBooking.fromCode,
+              journeyOrigin: confirmedBooking.toCode,
+              layoverDuration: selectedReturnFlight.layoverDuration || '45 mins',
+              connectingFlightNumber: retLeg2.flightNumber,
+              connectingDepartureTime: retLeg2.departureTime,
+              isLeadPassenger: isLead,
+              passengerEmail: p.email,
+              employeeId: p.employeeId,
+              companyName: confirmedBooking.corporateCompanyName,
+            });
+
+            // Return Leg 2
+            generatedTickets.push({
+              ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+              bookingReference: confirmedBooking.referenceNumber,
+              pnr: confirmedBooking.pnr,
+              passengerId: p.id,
+              passengerName: `${p.firstName} ${p.lastName}`,
+              passengerType: p.type,
+              flightNumber: retLeg2.flightNumber,
+              origin: retLeg2.fromCode,
+              destination: retLeg2.toCode,
+              departureDate: confirmedBooking.returnDepartureDate || returnDate,
+              departureTime: retLeg2.departureTime,
+              gate: 'GATE 2',
+              seatNumber: returnSeat,
+              qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${retLeg2.flightNumber}:${retLeg2.fromCode}-${retLeg2.toCode}:${returnSeat}`,
+              barcodeNumber: `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
+              aircraftModel: 'Cessna 208B Grand Caravan EX',
+              baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+              hasPetAttached: hasPetsTravelling && pets.length > 0 && paxIdx === 0,
+              petName: pets[0]?.name,
+              checkedIn: false,
+              legType: 'INBOUND',
+              isConnecting: true,
+              viaCode: 'ACI',
+              viaAirportName: 'Alderney Airport',
+              connectingLegIndex: 2,
+              totalConnectingLegs: 2,
+              finalDestination: confirmedBooking.fromCode,
+              journeyOrigin: confirmedBooking.toCode,
+              layoverDuration: selectedReturnFlight.layoverDuration || '45 mins',
+              connectingFlightNumber: retLeg1.flightNumber,
+              connectingDepartureTime: retLeg1.departureTime,
+              isLeadPassenger: isLead,
+              passengerEmail: p.email,
+              employeeId: p.employeeId,
+              companyName: confirmedBooking.corporateCompanyName,
+            });
+          } else {
+            // Direct Return
+            generatedTickets.push({
+              ticketNumber: 'TK-' + Math.floor(10000000 + Math.random() * 90000000),
+              bookingReference: confirmedBooking.referenceNumber,
+              pnr: confirmedBooking.pnr,
+              passengerId: p.id,
+              passengerName: `${p.firstName} ${p.lastName}`,
+              passengerType: p.type,
+              flightNumber: confirmedBooking.returnFlightNumber || selectedReturnFlight.flightNumber,
+              origin: confirmedBooking.toCode,
+              destination: confirmedBooking.fromCode,
+              departureDate: confirmedBooking.returnDepartureDate || returnDate,
+              departureTime: confirmedBooking.returnDepartureTime || selectedReturnFlight.departureTime,
+              gate: 'GATE 2',
+              seatNumber: returnSeat,
+              qrPayload: `FLYECLIPSE:${confirmedBooking.pnr}:${p.passportNumber || 'UK984210'}:${returnSeat}`,
+              barcodeNumber: `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
+              aircraftModel: 'Cessna 208B Grand Caravan EX',
+              baggageAllowance: '20kg Hold + 1 Pet Carrier Allowed',
+              hasPetAttached: hasPetsTravelling && pets.length > 0 && paxIdx === 0,
+              petName: pets[0]?.name,
+              checkedIn: false,
+              legType: 'INBOUND',
+              isLeadPassenger: isLead,
+              passengerEmail: p.email,
+              employeeId: p.employeeId,
+              companyName: confirmedBooking.corporateCompanyName,
+            });
+          }
+        }
+      });
 
       setActiveBooking(confirmedBooking);
       setIssuedTickets(generatedTickets);
@@ -548,7 +594,7 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
         'PAYMENT_COMPLETED',
         `Stripe verified £${grandTotal} for PNR ${confirmedBooking.pnr}. ${generatedTickets.length} Boarding Passes issued (${
           selectedFlight.isConnecting ? 'Multi-leg connecting via Alderney' : 'Direct'
-        }).`,
+        }). Lead Passenger: ${confirmedBooking.leadPassengerName}`,
         confirmedBooking.id
       );
     }, 1500);
@@ -1057,8 +1103,8 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                 key={idx}
                 className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 text-xs"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-[#6d3cc7] text-white flex items-center justify-center font-bold font-mono">
                       {idx + 1}
                     </span>
@@ -1069,45 +1115,98 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                       Outbound Seat: {selectedSeatIds[idx] || '1A'}
                       {tripType === 'RETURN' && ` • Inbound Seat: ${selectedReturnSeatIds[idx] || selectedSeatIds[idx] || '1A'}`}
                     </span>
-                    {idx === 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#6d3cc7] font-bold text-[10px]">
-                        Lead Passenger
+                    {pax.employeeId && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center gap-1">
+                        <Building2 className="w-3 h-3 text-emerald-700" />
+                        {pax.companyName || 'Corporate Employee'}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setLeadPassengerIndex(idx)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all ${
+                        leadPassengerIndex === idx
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-sm'
+                          : 'bg-slate-200/80 text-slate-600 hover:bg-purple-100 hover:text-[#6d3cc7]'
+                      }`}
+                      title="Assign this passenger as the Lead Passenger & Trip Coordinator"
+                    >
+                      <Crown className={`w-3.5 h-3.5 ${leadPassengerIndex === idx ? 'text-amber-600 fill-amber-500' : 'text-slate-400'}`} />
+                      <span>{leadPassengerIndex === idx ? 'Designated Lead Passenger' : 'Make Lead Passenger'}</span>
+                    </button>
                   </div>
 
-                  {/* Relative Auto-fill button */}
-                  {currentUser.savedRelatives.length > 0 && idx > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-400">Select Relative:</span>
-                      <select
-                        onChange={(e) => {
-                          const rel = currentUser.savedRelatives.find((r) => r.id === e.target.value);
-                          if (rel) {
-                            const updated = [...passengers];
-                            updated[idx] = {
-                              ...updated[idx],
-                              firstName: rel.firstName,
-                              lastName: rel.lastName,
-                              dob: rel.dob,
-                              passportNumber: rel.passportNumber,
-                              phone: rel.phone,
-                              email: rel.email,
-                            };
-                            setPassengers(updated);
-                          }
-                        }}
-                        className="bg-white border border-slate-200 rounded-lg px-2 py-1 font-medium text-slate-700"
-                      >
-                        <option value="">-- Choose saved relative --</option>
-                        {currentUser.savedRelatives.map((rel) => (
-                          <option key={rel.id} value={rel.id}>
-                            {rel.firstName} {rel.lastName} ({rel.relationship})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Corporate Employee Selector */}
+                    {corporateEmployees && corporateEmployees.length > 0 && (
+                      <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1">
+                        <Building2 className="w-3.5 h-3.5 text-purple-700" />
+                        <span className="text-[11px] font-bold text-purple-900">Corporate Roster:</span>
+                        <select
+                          value={pax.employeeId || ''}
+                          onChange={(e) => {
+                            const emp = corporateEmployees.find((item) => item.id === e.target.value);
+                            if (emp) {
+                              const updated = [...passengers];
+                              updated[idx] = {
+                                ...updated[idx],
+                                firstName: emp.firstName,
+                                lastName: emp.lastName,
+                                dob: emp.dob,
+                                passportNumber: emp.passportNumber,
+                                phone: emp.phone,
+                                email: emp.email,
+                                employeeId: emp.id,
+                                companyName: emp.companyName,
+                              };
+                              setPassengers(updated);
+                            }
+                          }}
+                          className="bg-white border border-purple-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-800 focus:ring-1 focus:ring-purple-500"
+                        >
+                          <option value="">-- Choose Employee --</option>
+                          {corporateEmployees.map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.firstName} {emp.lastName} ({emp.jobTitle} - {emp.department})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Relative Auto-fill button */}
+                    {currentUser.savedRelatives.length > 0 && idx > 0 && (
+                      <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2 py-1">
+                        <span className="text-slate-500 font-medium">Relative:</span>
+                        <select
+                          onChange={(e) => {
+                            const rel = currentUser.savedRelatives.find((r) => r.id === e.target.value);
+                            if (rel) {
+                              const updated = [...passengers];
+                              updated[idx] = {
+                                ...updated[idx],
+                                firstName: rel.firstName,
+                                lastName: rel.lastName,
+                                dob: rel.dob,
+                                passportNumber: rel.passportNumber,
+                                phone: rel.phone,
+                                email: rel.email,
+                              };
+                              setPassengers(updated);
+                            }
+                          }}
+                          className="bg-white border border-slate-200 rounded-md px-2 py-0.5 font-medium text-slate-700"
+                        >
+                          <option value="">-- Choose saved relative --</option>
+                          {currentUser.savedRelatives.map((rel) => (
+                            <option key={rel.id} value={rel.id}>
+                              {rel.firstName} {rel.lastName} ({rel.relationship})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -1622,6 +1721,11 @@ export const BookingEngine: React.FC<BookingEngineProps> = ({
                     {t.isConnecting && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                         Connecting Leg {t.connectingLegIndex || 1} of {t.totalConnectingLegs || 2} (Via {t.viaCode || 'ACI'})
+                      </span>
+                    )}
+                    {t.isLeadPassenger && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-600" /> Lead Passenger
                       </span>
                     )}
                     <span className="text-slate-400 font-mono">PNR: {t.pnr}</span>

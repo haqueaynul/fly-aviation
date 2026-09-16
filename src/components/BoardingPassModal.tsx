@@ -214,9 +214,21 @@ export const BoardingPassModal: React.FC<BoardingPassModalProps> = ({
                 <div>
                   <span className="text-slate-400 block">PASSENGER</span>
                   <span className="font-bold text-slate-800 text-sm">{activeTicket.passengerName}</span>
-                  <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">
-                    {activeTicket.passengerType}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                    <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">
+                      {activeTicket.passengerType}
+                    </span>
+                    {activeTicket.isLeadPassenger && (
+                      <span className="text-[10px] text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded font-bold">
+                        ⭐ Lead Passenger
+                      </span>
+                    )}
+                    {activeTicket.companyName && (
+                      <span className="text-[10px] text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded font-medium">
+                        🏢 {activeTicket.companyName}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div>
